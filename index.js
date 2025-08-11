@@ -7,6 +7,15 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const app = express();
+const nodemailer =require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 app.use(
   cors({
@@ -63,7 +72,7 @@ app.post("/login", async (req, res) => {
 });
 
 //logout 
-app.post("/logout", (req, res) => {
+app.post("/logout", async (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     sameSite: "Lax", 
@@ -71,13 +80,56 @@ app.post("/logout", (req, res) => {
   });
   res.json({ message: "Logout successful" });
 });
+const otpStore = new Map();
 
+app.post("/emailVerification/otp-send",async(req,res)=>{
+  console.log("jkbj");
+   const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+  otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 }); // 5 min expiry
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Your OTP Code',
+    text: `Your verification code is ${otp}. It will expire in 5 minutes.`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.json({ message: 'OTP sent successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send OTP', details: err.message });
+  }
+})
+
+app.post('/emailVerification/verify-otp',async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Email and OTP are required' });
+
+  const record = otpStore.get(email);
+  if (!record) return res.status(400).json({ error: 'No OTP found for this email' });
+
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(email);
+    return res.status(400).json({ error: 'OTP expired' });
+  }
+
+  if (Number(otp) !== record.otp) {
+    return res.status(400).json({ error: 'Invalid OTP' });
+  }
+
+  otpStore.delete(email);
+  res.json({ message: 'Email verified successfully' });
+});
 
 connectDb()
   .then(() => {
     console.log("Database connection established");
     app.listen(process.env.PORT, () => {
-      console.log("Server is successfully on port 3000");
+      console.log(`Server is successfully on port ${process.env.PORT}`);
     });
   })
   .catch((err) => {

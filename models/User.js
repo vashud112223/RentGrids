@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema(
     phonenumber: {
       type: String, // keep as string to preserve leading zeros
       required: [true, "Phone number is required"],
+      unique: true,
       validate: {
         validator: (value) => validator.isMobilePhone(value, "any"),
         message: (props) => `Invalid Phone Number: ${props.value}`,
@@ -51,7 +52,5 @@ const UserSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Ensure unique index is actually created
 
 module.exports = mongoose.model("User", UserSchema);

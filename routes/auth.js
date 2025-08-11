@@ -4,9 +4,11 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const validator = require("validator");
 const { ValidateUser, authMiddleware } = require("../utils/validation");
-const otpStore = new Map();
 const nodemailer = require("nodemailer");
 const { sendOtp, verifyOtp } = require("../utils/otp");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const FacebookStrategy = require("passport-facebook").Strategy;
 
 const router = express.Router();
 
@@ -23,9 +25,12 @@ router.post("/register", async (req, res) => {
     ValidateUser(req); // Validate user input
     const { fullName, emailId, password, phonenumber, profile } = req.body;
 
-    const existingUser = await User.findOne({ emailId });
+    const existingUser = await User.findOne({
+  $or: [{ emailId }, { phonenumber }]
+});
+
     if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
+      return res.status(400).json({ message: "EmailId or phonenumber is already registered" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -123,51 +128,67 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// router.post("/emailVerification/otp-send", async (req, res) => {
-//   console.log("jkbj");
-//   const { email } = req.body;
-//   if (!email) return res.status(400).json({ error: "Email is required" });
-
-//   const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
-//   otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 }); // 5 min expiry
-
-//   const mailOptions = {
-//     from: process.env.EMAIL_USER,
-//     to: email,
-//     subject: "Your OTP Code",
-//     text: `Your verification code is ${otp}. It will expire in 5 minutes.`,
-//   };
-
-//   try {
-//     await transporter.sendMail(mailOptions);
-//     res.json({ message: "OTP sent successfully" });
-//   } catch (err) {
-//     res.status(500).json({ error: "Failed to send OTP", details: err.message });
-//   }
-// });
-
-// router.post("/emailVerification/verify-otp", async (req, res) => {
-//   const { email, otp } = req.body;
-//   if (!email || !otp)
-//     return res.status(400).json({ error: "Email and OTP are required" });
-
-//   const record = otpStore.get(email);
-//   if (!record)
-//     return res.status(400).json({ error: "No OTP found for this email" });
-
-//   if (Date.now() > record.expiresAt) {
-//     otpStore.delete(email);
-//     return res.status(400).json({ error: "OTP expired" });
-//   }
-
-//   if (Number(otp) !== record.otp) {
-//     return res.status(400).json({ error: "Invalid OTP" });
-//   }
-
-//   otpStore.delete(email);
-//   res.json({ message: "Email verified successfully" });
-// });
-
 router.post("/emailVerification/otp-send", sendOtp);
 router.post("/emailVerification/verify-otp", verifyOtp);
+
+
+
+// =======================
+// PASSPORT CONFIG
+// =======================
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: `${process.env.CALLBACK_URL}/auth/google/callback`
+}, (accessToken, refreshToken, profile, done) => {
+  // Here you can check in DB if user exists, else create
+  return done(null, profile);
+}));
+
+// passport.use(new FacebookStrategy({
+//   clientID: process.env.FACEBOOK_APP_ID,
+//   clientSecret: process.env.FACEBOOK_APP_SECRET,
+//   callbackURL: `${process.env.CALLBACK_URL}/auth/facebook/callback`,
+//   profileFields: ["id", "displayName", "emails", "photos"]
+// }, (accessToken, refreshToken, profile, done) => {
+//   // Same DB check here
+//   return done(null, profile);
+// }));
+
+// =======================
+// ROUTES
+// =======================
+
+// Google Login
+router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/auth/google/callback", 
+  passport.authenticate("google", { session: false, failureRedirect: "/login" }),
+  (req, res) => {
+    const token = jwt.sign(
+      { id: req.user.id, name: req.user.displayName, provider: "google" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Redirect to frontend with token in URL
+    res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}`);
+  }
+);
+
+// Facebook Login
+// router.get("/auth/facebook", passport.authenticate("facebook", { scope: ["email"] }));
+// router.get("/auth/facebook/callback",
+//   passport.authenticate("facebook", { session: false, failureRedirect: "/login" }),
+//   (req, res) => {
+//     const token = jwt.sign(
+//       { id: req.user.id, name: req.user.displayName, provider: "facebook" },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1h" }
+//     );
+//     res.json({ token });
+//   }
+// );
+
+
+
 module.exports = { router };

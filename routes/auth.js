@@ -6,6 +6,7 @@ const validator = require("validator");
 const { ValidateUser, authMiddleware } = require("../utils/validation");
 const otpStore = new Map();
 const nodemailer = require("nodemailer");
+const { sendOtp, verifyOtp } = require("../utils/otp");
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ const generateToken = (user) => {
 router.post("/register", async (req, res) => {
   try {
     ValidateUser(req); // Validate user input
-    const { fullName, emailId, password, phonenumber } = req.body;
+    const { fullName, emailId, password, phonenumber, profile } = req.body;
 
     const existingUser = await User.findOne({ emailId });
     if (existingUser) {
@@ -34,6 +35,7 @@ router.post("/register", async (req, res) => {
       emailId,
       password: hashedPassword,
       phonenumber,
+      profile,
     });
 
     await newUser.save();
@@ -46,13 +48,19 @@ router.post("/register", async (req, res) => {
 // LOGIN
 router.post("/login", async (req, res) => {
   try {
-    const { emailId, password } = req.body;
+    const { userName, password, profile } = req.body;
 
-    if (!emailId || !password) {
-      return res.status(400).json({ message: "Email and password required" });
+    if (!userName || !password || !profile) {
+      return res
+        .status(400)
+        .json({ message: "Email or password or profile required" });
     }
-
-    const user = await User.findOne({ emailId });
+    let user;
+    if (!validator.isEmail(userName)) {
+      user = await User.findOne({ phonenumber: userName, profile });
+    } else {
+      user = await User.findOne({ emailId: userName, profile });
+    }
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -85,8 +93,8 @@ router.patch("/forget-password", async (req, res) => {
   try {
     const { emailId, updatedPassword } = req.body;
     const user = await User.findOne({ emailId: emailId });
-    if(!user){
-        throw new Error("Invalid Email Id");
+    if (!user) {
+      throw new Error("Invalid Email Id");
     }
     if (!validator.isStrongPassword(updatedPassword)) {
       throw new Error("Enter Strong Password: " + updatedPassword);
@@ -115,49 +123,51 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-router.post("/emailVerification/otp-send", async (req, res) => {
-  console.log("jkbj");
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "Email is required" });
+// router.post("/emailVerification/otp-send", async (req, res) => {
+//   console.log("jkbj");
+//   const { email } = req.body;
+//   if (!email) return res.status(400).json({ error: "Email is required" });
 
-  const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
-  otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 }); // 5 min expiry
+//   const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+//   otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 }); // 5 min expiry
 
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Your OTP Code",
-    text: `Your verification code is ${otp}. It will expire in 5 minutes.`,
-  };
+//   const mailOptions = {
+//     from: process.env.EMAIL_USER,
+//     to: email,
+//     subject: "Your OTP Code",
+//     text: `Your verification code is ${otp}. It will expire in 5 minutes.`,
+//   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    res.json({ message: "OTP sent successfully" });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to send OTP", details: err.message });
-  }
-});
+//   try {
+//     await transporter.sendMail(mailOptions);
+//     res.json({ message: "OTP sent successfully" });
+//   } catch (err) {
+//     res.status(500).json({ error: "Failed to send OTP", details: err.message });
+//   }
+// });
 
-router.post("/emailVerification/verify-otp", async (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp)
-    return res.status(400).json({ error: "Email and OTP are required" });
+// router.post("/emailVerification/verify-otp", async (req, res) => {
+//   const { email, otp } = req.body;
+//   if (!email || !otp)
+//     return res.status(400).json({ error: "Email and OTP are required" });
 
-  const record = otpStore.get(email);
-  if (!record)
-    return res.status(400).json({ error: "No OTP found for this email" });
+//   const record = otpStore.get(email);
+//   if (!record)
+//     return res.status(400).json({ error: "No OTP found for this email" });
 
-  if (Date.now() > record.expiresAt) {
-    otpStore.delete(email);
-    return res.status(400).json({ error: "OTP expired" });
-  }
+//   if (Date.now() > record.expiresAt) {
+//     otpStore.delete(email);
+//     return res.status(400).json({ error: "OTP expired" });
+//   }
 
-  if (Number(otp) !== record.otp) {
-    return res.status(400).json({ error: "Invalid OTP" });
-  }
+//   if (Number(otp) !== record.otp) {
+//     return res.status(400).json({ error: "Invalid OTP" });
+//   }
 
-  otpStore.delete(email);
-  res.json({ message: "Email verified successfully" });
-});
+//   otpStore.delete(email);
+//   res.json({ message: "Email verified successfully" });
+// });
 
+router.post("/emailVerification/otp-send", sendOtp);
+router.post("/emailVerification/verify-otp", verifyOtp);
 module.exports = { router };

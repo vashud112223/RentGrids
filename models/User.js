@@ -37,7 +37,16 @@ const UserSchema = new mongoose.Schema(
         message: (props) => `Invalid Phone Number: ${props.value}`,
       },
     },
+    profile: {
+      type: String,
+      required: [true, "Profile is required"],
+      enum: {
+        values: ["Tenant", "Landlord"],
+        message: `{value} is incorrect`,
+      },
+    },
   },
+
   {
     timestamps: true,
   }

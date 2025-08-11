@@ -2,7 +2,10 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const validator = require("validator");
 const { ValidateUser, authMiddleware } = require("../utils/validation");
+const otpStore = new Map();
+const nodemailer = require("nodemailer");
 
 const router = express.Router();
 
@@ -35,7 +38,6 @@ router.post("/register", async (req, res) => {
 
     await newUser.save();
     res.status(201).json({ message: "User registered successfully" });
-
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -63,12 +65,12 @@ router.post("/login", async (req, res) => {
     const token = generateToken(user);
     res.cookie("token", token, { httpOnly: true });
     res.json({ message: "Login successful", token });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
+//Logout
 router.post("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
@@ -77,29 +79,85 @@ router.post("/logout", (req, res) => {
   });
   res.json({ message: "Logout successfully" });
 });
-router.patch("/forget", authMiddleware, async (req, res) => {
+
+// Forget password
+router.patch("/forget-password", async (req, res) => {
   try {
-    const { emailId,updatedPassword } = req.body;
-    console.log(updatedPassword);
+    const { emailId, updatedPassword } = req.body;
     const user = await User.findOne({ emailId: emailId });
-    const loggedInUser = req.user;
-    console.log(loggedInUser);
+    if(!user){
+        throw new Error("Invalid Email Id");
+    }
     if (!validator.isStrongPassword(updatedPassword)) {
       throw new Error("Enter Strong Password: " + updatedPassword);
     }
 
     const passwordHash = await bcrypt.hash(updatedPassword, 10);
-    loggedInUser.password = passwordHash;
-    console.log(loggedInUser);
-    loggedInUser.save();
+    user.password = passwordHash;
+    console.log(user);
+    await user.save();
 
     res.json({
-      message: `${loggedInUser.firstName}, your password is update succesfully`,
-      data: loggedInUser,
+      message: `${user.fullName}, your password is update succesfully`,
+      data: user,
     });
   } catch (err) {
     res.status(400).send("Error on login: " + err.message);
   }
 });
 
-module.exports = router;
+// OTP
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+router.post("/emailVerification/otp-send", async (req, res) => {
+  console.log("jkbj");
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+
+  const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+  otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 }); // 5 min expiry
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Your OTP Code",
+    text: `Your verification code is ${otp}. It will expire in 5 minutes.`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.json({ message: "OTP sent successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to send OTP", details: err.message });
+  }
+});
+
+router.post("/emailVerification/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp)
+    return res.status(400).json({ error: "Email and OTP are required" });
+
+  const record = otpStore.get(email);
+  if (!record)
+    return res.status(400).json({ error: "No OTP found for this email" });
+
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(email);
+    return res.status(400).json({ error: "OTP expired" });
+  }
+
+  if (Number(otp) !== record.otp) {
+    return res.status(400).json({ error: "Invalid OTP" });
+  }
+
+  otpStore.delete(email);
+  res.json({ message: "Email verified successfully" });
+});
+
+module.exports = { router };

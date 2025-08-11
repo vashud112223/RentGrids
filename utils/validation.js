@@ -1,30 +1,30 @@
 const validator = require("validator");
 const ValidateUser = (req) => {
-  const { fullname, emailId, password } = req.body;
-  if (!firstName || !lastName) {
-    throw new Error("Name required");
+  const { fullName, emailId, password,phonenumber } = req.body;
+  if (!fullName) {
+    throw new Error(" Full Name required");
   } else if (!validator.isEmail(emailId)) {
-    throw new Error("Email is not vald");
+    throw new Error("Email is not valid");
   } else if (!validator.isStrongPassword(password)) {
     throw new Error("Enter a strong password");
   }
-    else if (!validator.isStrongPassword(password)) {
-    throw new Error("Enter a strong password");
+    else if (!validator.isMobilePhone(phonenumber, "en-IN")) {
+  throw new Error("Enter a valid phone number");
+}
+
+};
+
+const authMiddleware = async (req, res, next) => {
+  const token = req.cookies.token;
+  console.log(token);
+  if (!token) return res.status(400).json({ message: "No token provided" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid token" });
   }
 };
 
-const validateProfileData = (req)=> {
-  const Allowed_Fields = [
-    "firstName",
-    "lastName",
-    "age",
-    "gender",
-    "about",
-    "skills",
-    "photoURL"
-  ];
-  const isAllowed = Object.keys(req.body).every((field) => Allowed_Fields.includes(field));
-  return isAllowed;
-}
-
-module.exports= { ValidateUser,validateProfileData };
+module.exports= { ValidateUser,authMiddleware};

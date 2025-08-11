@@ -1,43 +1,48 @@
 const mongoose = require("mongoose");
+const validator = require("validator");
 
-const UserSchema = new mongoose.Schema({
-  
+const UserSchema = new mongoose.Schema(
+  {
     fullName: {
       type: String,
-      required: true,
-      minLength: 8,
+      required: [true, "Full name is required"],
+      minlength: [3, "Full name must be at least 3 characters long"],
+      trim: true,
     },
     emailId: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
       lowercase: true,
       trim: true,
-      validate(value) {
-        if (!validator.isEmail(value)) {
-          throw new Error("Invalid Email Id: " + value);
-        }
+      validate: {
+        validator: (value) => validator.isEmail(value),
+        message: (props) => `Invalid Email Id: ${props.value}`,
       },
     },
     password: {
       type: String,
-      required: true,
-      validate(value) {
-        if (!validator.isStrongPassword(value)) {
-          throw new Error("Enter Strong Password: " + value);
-        }
+      required: [true, "Password is required"],
+      validate: {
+        validator: (value) => validator.isStrongPassword(value),
+        message:
+          "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character",
       },
     },
-  phonenumber: {
-    type: String, // Use String so leading zeros aren't lost
-    required: [true, "Phone number is required"],
-    match: [
-      /^[0-9]{10}$/,
-      "Phone number must be exactly 10 digits"
-    ],
+    phonenumber: {
+      type: String, // keep as string to preserve leading zeros
+      required: [true, "Phone number is required"],
+      validate: {
+        validator: (value) => validator.isMobilePhone(value, "any"),
+        message: (props) => `Invalid Phone Number: ${props.value}`,
+      },
+    },
+  },
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true // Adds createdAt and updatedAt automatically
-});
+);
 
-module.exports = mongoose.model('User', UserSchema);
+// Ensure unique index is actually created
+
+module.exports = mongoose.model("User", UserSchema);

@@ -81,7 +81,6 @@ UserSchema.pre("validate", function (next) {
     if (!this.password) this.invalidate("password", "Password is required");
     if (!this.phonenumber)
       this.invalidate("phonenumber", "Phone number is required");
-    if (!this.profile) this.invalidate("profile", "Profile is required");
   } else {
     // For social login, providerId must be provided
     if (!this.providerId) this.invalidate("providerId", "Provider ID is required");

@@ -11,9 +11,9 @@ const authMiddleware = (req, res, next) => {
     }
 
     // 2. Then try from Authorization header
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    // if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    //   token = req.headers.authorization.split(" ")[1];
+    // }
 
     // 3. If no token, block access
     if (!token) {

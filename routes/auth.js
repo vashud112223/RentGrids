@@ -26,11 +26,13 @@ router.post("/register", async (req, res) => {
     const { fullName, emailId, password, phonenumber, profile } = req.body;
 
     const existingUser = await User.findOne({
-  $or: [{ emailId }, { phonenumber }]
-});
+      $or: [{ emailId }, { phonenumber }],
+    });
 
     if (existingUser) {
-      return res.status(400).json({ message: "EmailId or phonenumber is already registered" });
+      return res
+        .status(400)
+        .json({ message: "EmailId or phonenumber is already registered" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -131,19 +133,47 @@ const transporter = nodemailer.createTransport({
 router.post("/emailVerification/otp-send", sendOtp);
 router.post("/emailVerification/verify-otp", verifyOtp);
 
-
-
 // =======================
 // PASSPORT CONFIG
 // =======================
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `${process.env.CALLBACK_URL}/auth/google/callback`
-}, (accessToken, refreshToken, profile, done) => {
-  // Here you can check in DB if user exists, else create
-  return done(null, profile);
-}));
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: `${process.env.CALLBACK_URL}/auth/google/callback`,
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        // Check if user exists
+        const email = profile.emails?.[0]?.value || null;
+
+        // First: check if a user already exists with this email
+        let user = email ? await User.findOne({ emailId: email }) : null;
+
+        if (!user) {
+          user = await User.findOne({
+            provider: "google",
+            providerId: profile.id,
+          });
+          user = new User({
+            fullName: profile.displayName,
+            emailId: profile.emails?.[0]?.value || null,
+            provider: "google",
+            providerId: profile.id,
+            profilePicture: profile.photos?.[0]?.value || null,
+            authProvider: "google",
+          });
+          await user.save();
+        }
+
+        return done(null, user);
+      } catch (err) {
+        return done(err, null);
+      }
+    }
+  )
+);
 
 // passport.use(new FacebookStrategy({
 //   clientID: process.env.FACEBOOK_APP_ID,
@@ -160,17 +190,18 @@ passport.use(new GoogleStrategy({
 // =======================
 
 // Google Login
-router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-router.get("/auth/google/callback", 
-  passport.authenticate("google", { session: false, failureRedirect: "/login" }),
+router.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+router.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: "/login",
+  }),
   (req, res) => {
-    const token = jwt.sign(
-      { id: req.user.id, name: req.user.displayName, provider: "google" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    // Redirect to frontend with token in URL
+    const token = generateToken(req.user); // uses your existing JWT generator
     res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}`);
   }
 );
@@ -188,7 +219,5 @@ router.get("/auth/google/callback",
 //     res.json({ token });
 //   }
 // );
-
-
 
 module.exports = { router };

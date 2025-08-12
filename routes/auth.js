@@ -23,7 +23,7 @@ const generateToken = (user) => {
 router.post("/register", async (req, res) => {
   try {
     ValidateUser(req); // Validate user input
-    const { fullName, emailId, password, phonenumber, profile } = req.body;
+    const { fullName, emailId, password, phonenumber} = req.body;
 
     const existingUser = await User.findOne({
       $or: [{ emailId }, { phonenumber }],
@@ -42,7 +42,7 @@ router.post("/register", async (req, res) => {
       emailId,
       password: hashedPassword,
       phonenumber,
-      profile,
+      // profile,
     });
 
     await newUser.save();
@@ -60,7 +60,7 @@ router.post("/login", async (req, res) => {
     if (!userName || !password) {
       return res
         .status(400)
-        .json({ message: "Email or password or profile required" });
+        .json({ message: "Email or password required" });
     }
     let user;
     if (!validator.isEmail(userName)) {

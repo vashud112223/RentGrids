@@ -55,18 +55,18 @@ router.post("/register", async (req, res) => {
 // LOGIN
 router.post("/login", async (req, res) => {
   try {
-    const { userName, password, profile } = req.body;
+    const { userName, password} = req.body;
 
-    if (!userName || !password || !profile) {
+    if (!userName || !password) {
       return res
         .status(400)
         .json({ message: "Email or password or profile required" });
     }
     let user;
     if (!validator.isEmail(userName)) {
-      user = await User.findOne({ phonenumber: userName, profile });
+      user = await User.findOne({ phonenumber: userName });
     } else {
-      user = await User.findOne({ emailId: userName, profile });
+      user = await User.findOne({ emailId: userName });
     }
     if (!user) {
       return res.status(404).json({ message: "User not found" });

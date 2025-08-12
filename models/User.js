@@ -46,13 +46,6 @@ const UserSchema = new mongoose.Schema(
         message: (props) => `Invalid Phone Number: ${props.value}`,
       },
     },
-    profile: {
-      type: String,
-      enum: {
-        values: ["Tenant", "Landlord"],
-        message: `{VALUE} is incorrect`,
-      },
-    },
     authProvider: {
       type: String,
       enum: ["local", "google", "facebook"],

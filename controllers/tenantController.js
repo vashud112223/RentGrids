@@ -16,17 +16,23 @@ exports.getTenantProfile = async (req, res) => {
 // 2. Create Tenant Profile
 exports.createTenantProfile = async (req, res) => {
   try {
-    const { fullName, emailId, phonenumber, address } = req.body;
+    const { fullName, phonenumber, address } = req.body;
 
     const exists = await User.findOne({ _id: req.userId });
-    if (exists) return res.status(400).json({ message: "Profile already exists" });
+    if (!exists) return res.status(400).json({ message: "Profile does not exists" });
 
-    const tenant = await User.create({
-      emailId: emailId,
-      fullName,
-      phonenumber,
-      address
-    });
+    const tenant = await User.findOneAndUpdate(
+      { _id: req.userId },
+      {
+    $set: {
+      fullName: fullName,
+      // emailId:emailId,
+      // phonenumber: phonenumber,
+      address: address
+    }
+  },
+      { new: true, runValidators: true }
+    );
 
     res.status(201).json({ message: "Profile created successfully", tenant });
   } catch (err) {

@@ -4,7 +4,7 @@ const cloudinary = require("../configuration/cloudinary");
 // 1. Get User Profile
 exports.getTenantProfile = async (req, res) => {
   try {
-    const tenant = await User.findOne({ emailId: req.emailId });
+    const tenant = await User.findOne({ _id: req.userId });
     if (!tenant) return res.status(404).json({ message: "Profile not found" });
     res.json(tenant);
   } catch (err) {
@@ -18,7 +18,7 @@ exports.createTenantProfile = async (req, res) => {
   try {
     const { fullName, emailId, phonenumber, address } = req.body;
 
-    const exists = await User.findOne({ emailId: req.emailId });
+    const exists = await User.findOne({ _id: req.userId });
     if (exists) return res.status(400).json({ message: "Profile already exists" });
 
     const tenant = await User.create({
@@ -40,7 +40,7 @@ exports.updateTenantProfile = async (req, res) => {
   try {
     const {fullName,phonenumber,address}=req.body;
     const tenant = await User.findOneAndUpdate(
-      { emailId: req.emailId },
+      { _id: req.userId },
       {
     $set: {
       fullName: fullName,
@@ -68,7 +68,7 @@ exports.uploadTenantPhoto = async (req, res) => {
     });
 
     const tenant = await User.findOneAndUpdate(
-      { emailId: req.emailId },
+      { _id: req.userId },
       { photo: result.secure_url },
       { new: true }
     );

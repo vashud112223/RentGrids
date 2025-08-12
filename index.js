@@ -4,6 +4,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDb } = require("./configuration/database");
 const {router} = require("./routes/auth");
+const {tenantRouter} = require("./routes/tenantRoutes");
 const app = express();
 
 app.use(express.json());
@@ -19,6 +20,7 @@ app.use(cookieParser());
 
 
 app.use("/", router);
+app.use("/",tenantRouter);
 
 // Connect DB and Start Server
 connectDb()

@@ -63,6 +63,19 @@ const UserSchema = new mongoose.Schema(
       sparse: true, // not required for local login
       trim: true,
     },
+      address: {
+    type: String
+  },
+  
+      photo: {
+  type: String, // URL of the tenant's photo
+  default: null
+  },
+      // Status Flags
+  isActive: {
+    type: Boolean,
+    default: true
+  },
   },
   {
     timestamps: true,

@@ -4,6 +4,120 @@ const Landlord = require("../models/Landlord");
 const Document = require("../models/Document");
 const path = require("path");
 const fs = require("fs");
+const { ValidateUser } = require("../utils/validation");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const validator = require("validator");
+const { generateToken } = require("../middleware/authMiddleware");
+
+const formatDate = (date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// REGISTER
+exports.ownerRegister = async (req, res) => {
+  try {
+    ValidateUser(req); // Validate user input
+    const { fullName, emailId, password, phonenumber } = req.body;
+
+    const existingUser = await Landlord.findOne({
+      $or: [{ emailId }, { phonenumber }],
+    });
+
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "EmailId or phonenumber is already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new Landlord({
+      fullName,
+      emailId,
+      password: hashedPassword,
+      phonenumber,
+      // profile,
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// LOGIN
+exports.ownerLogin = async (req, res) => {
+  try {
+    const { userName, password } = req.body;
+
+    if (!userName || !password) {
+      return res.status(400).json({ message: "Email or password required" });
+    }
+    let user;
+    if (!validator.isEmail(userName)) {
+      user = await Landlord.findOne({ phonenumber: userName });
+    } else {
+      user = await Landlord.findOne({ emailId: userName });
+    }
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const token = generateToken(user);
+    res.cookie("token", token);
+    // res.json({ message: "Login successful", token });
+    res.status(200).send("logged in!!!");
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+//Logout
+exports.onwerLogout = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "Lax",
+    secure: false,
+  });
+  res.json({ message: "Logout successfully" });
+};
+
+//Forget Password
+exports.ownerForgetPassword = async (req, res) => {
+  try {
+    const { emailId, updatedPassword } = req.body;
+    const user = await Landlord.findOne({ emailId: emailId });
+    if (!user) {
+      throw new Error("Invalid Email Id");
+    }
+    if (!validator.isStrongPassword(updatedPassword)) {
+      throw new Error("Enter Strong Password: " + updatedPassword);
+    }
+
+    const passwordHash = await bcrypt.hash(updatedPassword, 10);
+    user.password = passwordHash;
+    console.log(user);
+    await user.save();
+
+    res.json({
+      message: `${user.fullName}, your password is update succesfully`,
+      data: user,
+    });
+  } catch (err) {
+    res.status(400).send("Error on login: " + err.message);
+  }
+};
 
 // 1. Get User Profile
 exports.getOwnerProfile = async (req, res) => {
@@ -15,14 +129,6 @@ exports.getOwnerProfile = async (req, res) => {
     console.error("Error fetching profile:", err);
     res.status(500).json({ message: "Server error" });
   }
-};
-
-const formatDate = (date) => {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
 };
 
 // 2. Create owner Profile
@@ -68,12 +174,13 @@ exports.createOwnerProfile = async (req, res) => {
 // 3. Update owner Profile (without photo)
 exports.updateOwnerProfile = async (req, res) => {
   try {
-    const { dob, propertyType } = req.body;
+    const { fullName, dob, propertyType } = req.body;
     const parsedDob = new Date(dob);
     const owner = await Landlord.findOneAndUpdate(
       { _id: req.userId },
       {
         $set: {
+          fullName: fullName,
           dob: parsedDob,
           propertyType: propertyType,
         },

@@ -6,6 +6,8 @@ const { connectDb } = require("./configuration/database");
 const {router} = require("./routes/auth");
 const {tenantRouter} = require("./routes/tenantRoutes");
 const { ownerRouter } = require("./routes/ownerRoutes");
+const { propertyRouter } = require("./routes/propertyRoutes");
+const  featureRouter  = require("./routes/featureRoutes");
 const path = require("path");
 const app = express();
 
@@ -24,6 +26,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/", router);
 app.use("/",tenantRouter);
 app.use("/",ownerRouter);
+app.use("/",propertyRouter);
+app.use("/",featureRouter);
 
 // Connect DB and Start Server
 connectDb()

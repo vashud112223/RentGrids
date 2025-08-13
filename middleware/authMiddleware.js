@@ -1,6 +1,12 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+// Generate JWT token
+const generateToken = (user) => {
+  return jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+};
 const authMiddleware = (req, res, next) => {
   try {
     let token = null;
@@ -10,12 +16,6 @@ const authMiddleware = (req, res, next) => {
       token = req.cookies.token;
     }
 
-    // 2. Then try from Authorization header
-    // if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    //   token = req.headers.authorization.split(" ")[1];
-    // }
-
-    // 3. If no token, block access
     if (!token) {
       return res.status(401).json({ message: "No token provided, authorization denied" });
     }
@@ -33,4 +33,4 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+module.exports = {authMiddleware,generateToken};

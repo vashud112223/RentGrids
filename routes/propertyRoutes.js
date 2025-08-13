@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const authMiddleware = require("../middleware/authMiddleware");
+const {authMiddleware} = require("../middleware/authMiddleware");
 const { createProperty,updateProperty,updatePropertyStatus } = require("../controllers/propertyController");
 
 const upload = multer({ dest: "uploads/" });

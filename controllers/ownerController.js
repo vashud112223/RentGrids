@@ -17,6 +17,14 @@ exports.getOwnerProfile = async (req, res) => {
   }
 };
 
+const formatDate = (date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 // 2. Create owner Profile
 exports.createOwnerProfile = async (req, res) => {
   try {
@@ -37,11 +45,23 @@ exports.createOwnerProfile = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
-    res.status(201).json({ message: "Profile created successfully", owner });
+    // Format DOB for response
+    const formattedOwner = {
+      ...owner.toObject(),
+      dob: formatDate(owner.dob),
+    };
+    res
+      .status(201)
+      .json({ message: "Profile created successfully", owner: formattedOwner });
   } catch (err) {
     console.error("Error creating profile:", err);
-    res.status(500).json({ message: "Server error" });
+    if (err.name === "ValidationError") {
+      // Extract the first validation error message
+      const firstError = Object.values(err.errors)[0]?.message;
+      return res.status(400).json({ message: firstError });
+    }
+
+    res.status(500).json({ message: "Error Creating profile" });
   }
 };
 
@@ -49,28 +69,48 @@ exports.createOwnerProfile = async (req, res) => {
 exports.updateOwnerProfile = async (req, res) => {
   try {
     const { dob, propertyType } = req.body;
+    const parsedDob = new Date(dob);
     const owner = await Landlord.findOneAndUpdate(
       { _id: req.userId },
       {
         $set: {
-          dob: dob,
+          dob: parsedDob,
           propertyType: propertyType,
         },
       },
       { new: true, runValidators: true }
     );
-    if (!owner) return res.status(404).json({ message: "Profile not found" });
-    res.json({ message: "Profile updated successfully", owner });
+
+    if (!owner) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+    // Format DOB for response
+    const formattedOwner = {
+      ...owner.toObject(),
+      dob: formatDate(owner.dob),
+    };
+
+    res.json({
+      message: "Profile updated successfully",
+      owner: formattedOwner,
+    });
   } catch (err) {
     console.error("Error updating profile:", err);
-    res.status(500).json({ message: "Server error" });
+
+    if (err.name === "ValidationError") {
+      // Extract the first validation error message
+      const firstError = Object.values(err.errors)[0]?.message;
+      return res.status(400).json({ message: firstError });
+    }
+
+    res.status(500).json({ message: "Error updating profile" });
   }
 };
 
 // 4. Upload/Update Photo
 exports.uploadOwnerPhoto = async (req, res) => {
   try {
-    console.log("File",req)
+    console.log("File", req);
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     const result = await cloudinary.uploader.upload(req.file.path, {
@@ -93,34 +133,36 @@ exports.uploadOwnerPhoto = async (req, res) => {
 };
 
 exports.uploadOwnerFile = async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "PDF file is required" });
-      }
-
-      const { documentType } = req.body;
-      if (!documentType) {
-        return res.status(400).json({ message: "documentType is required" });
-      }
-
-      const newDoc = new Document({
-        ownerId: req.userId,
-        documentType,
-        filePath: req.file.path
-      });
-
-      await newDoc.save();
-
-      res.status(201).json({
-        message: "Document uploaded successfully",
-        document: newDoc
-      });
-    } catch (err) {
-      res.status(500).json({ message: "Error uploading document", error: err.message });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "PDF file is required" });
     }
-  };
 
-  exports.getOwnerDocuments = async (req, res) => {
+    const { documentType } = req.body;
+    if (!documentType) {
+      return res.status(400).json({ message: "documentType is required" });
+    }
+
+    const newDoc = new Document({
+      ownerId: req.userId,
+      documentType,
+      filePath: req.file.path,
+    });
+
+    await newDoc.save();
+
+    res.status(201).json({
+      message: "Document uploaded successfully",
+      document: newDoc,
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error uploading document", error: err.message });
+  }
+};
+
+exports.getOwnerDocuments = async (req, res) => {
   try {
     const documentId = req.params.id;
     const document = await Document.findById(documentId);
@@ -134,7 +176,7 @@ exports.uploadOwnerFile = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Error viewing document",
-      error: error.message
+      error: error.message,
     });
   }
 };

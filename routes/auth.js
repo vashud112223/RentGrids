@@ -132,41 +132,47 @@ const transporter = nodemailer.createTransport({
 router.post("/emailVerification/otp-send", sendOtp);
 router.post("/emailVerification/verify-otp", verifyOtp);
 
-// =======================
-// PASSPORT CONFIG
-// =======================
+// Oauth logic 
+
+console.log("Google user callback URL:", `${process.env.CALLBACK_URL}/auth/user/google/callback`);
+
 passport.use(
+  "google",
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: `${process.env.CALLBACK_URL}/auth/google/callback`,
+      passReqToCallback: true, // important for reading role
     },
-    async (accessToken, refreshToken, profile, done) => {
+    async (req, accessToken, refreshToken, profile, done) => {
       try {
-        // Check if user exists
+        const role = req.query.state || "user"; // 'landlord' or 'user'
         const email = profile.emails?.[0]?.value || null;
 
-        // First: check if a user already exists with this email
-        let user = email ? await User.findOne({ emailId: email }) : null;
+        let Model = role === "landlord" ? Landlord : User;
 
-        if (!user) {
-          user = await User.findOne({
+        let account = email ? await Model.findOne({ emailId: email }) : null;
+        if (!account) {
+          account = await Model.findOne({
             provider: "google",
             providerId: profile.id,
           });
-          user = new User({
+        }
+
+        if (!account) {
+          account = new Model({
             fullName: profile.displayName,
-            emailId: profile.emails?.[0]?.value || null,
+            emailId: email,
             provider: "google",
             providerId: profile.id,
             profilePicture: profile.photos?.[0]?.value || null,
             authProvider: "google",
           });
-          await user.save();
+          await account.save();
         }
 
-        return done(null, user);
+        return done(null, account);
       } catch (err) {
         return done(err, null);
       }
@@ -174,25 +180,17 @@ passport.use(
   )
 );
 
-// passport.use(new FacebookStrategy({
-//   clientID: process.env.FACEBOOK_APP_ID,
-//   clientSecret: process.env.FACEBOOK_APP_SECRET,
-//   callbackURL: `${process.env.CALLBACK_URL}/auth/facebook/callback`,
-//   profileFields: ["id", "displayName", "emails", "photos"]
-// }, (accessToken, refreshToken, profile, done) => {
-//   // Same DB check here
-//   return done(null, profile);
-// }));
 
-// =======================
-// ROUTES
-// =======================
+// Start Google login (pass role as state param)
+router.get("/auth/google", (req, res, next) => {
+  const role = req.query.role || "user";
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state: role, // role will come back as req.query.state
+  })(req, res, next);
+});
 
-// Google Login
-router.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+// Callback
 router.get(
   "/auth/google/callback",
   passport.authenticate("google", {
@@ -200,23 +198,12 @@ router.get(
     failureRedirect: "/login",
   }),
   (req, res) => {
-    const token = generateToken(req.user); // uses your existing JWT generator
+    const token = generateToken(req.user);
     res.redirect(`${process.env.CLIENT_URL}/auth-success?token=${token}`);
   }
 );
 
-// Facebook Login
-// router.get("/auth/facebook", passport.authenticate("facebook", { scope: ["email"] }));
-// router.get("/auth/facebook/callback",
-//   passport.authenticate("facebook", { session: false, failureRedirect: "/login" }),
-//   (req, res) => {
-//     const token = jwt.sign(
-//       { id: req.user.id, name: req.user.displayName, provider: "facebook" },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "1h" }
-//     );
-//     res.json({ token });
-//   }
-// );
+
+
 
 module.exports = { router };

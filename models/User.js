@@ -46,6 +46,9 @@ const UserSchema = new mongoose.Schema(
         message: (props) => `Invalid Phone Number: ${props.value}`,
       },
     },
+    dob:{
+      type:Date
+    },
     authProvider: {
       type: String,
       enum: ["local", "google", "facebook"],
@@ -56,6 +59,12 @@ const UserSchema = new mongoose.Schema(
       sparse: true, // not required for local login
       trim: true,
     },
+    documents: [
+      {
+        docName: { type: String, required: true },
+        url: { type: String, required: true }
+      }
+    ],
       address: {
     type: String
   },

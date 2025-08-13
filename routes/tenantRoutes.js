@@ -5,7 +5,8 @@ const {
   getTenantProfile,
   createTenantProfile,
   updateTenantProfile,
-  uploadTenantPhoto
+  uploadTenantPhoto,
+  uploadTenantDocument // ⬅️ new controller
 } = require("../controllers/tenantController");
 
 const tenantRouter = express.Router();
@@ -22,4 +23,12 @@ tenantRouter.put("/profile", authMiddleware, updateTenantProfile);
 // Upload/update photo
 tenantRouter.post("/profile/photo", authMiddleware, upload.single("photo"), uploadTenantPhoto);
 
-module.exports = {tenantRouter};
+// Upload/update document
+tenantRouter.post(
+  "/profile/document",
+  authMiddleware,
+  upload.single("file"), // "file" must match Postman field name
+  uploadTenantDocument
+);
+
+module.exports = { tenantRouter };

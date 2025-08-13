@@ -16,21 +16,21 @@ exports.getTenantProfile = async (req, res) => {
 // 2. Create Tenant Profile
 exports.createTenantProfile = async (req, res) => {
   try {
-    const { fullName, phonenumber, address } = req.body;
+    const { fullName, phonenumber, address, dob } = req.body;
 
     const exists = await User.findOne({ _id: req.userId });
     if (!exists) return res.status(400).json({ message: "Profile does not exists" });
 
+    const parsedDob = new Date(dob);
     const tenant = await User.findOneAndUpdate(
       { _id: req.userId },
       {
-    $set: {
-      fullName: fullName,
-      // emailId:emailId,
-      // phonenumber: phonenumber,
-      address: address
-    }
-  },
+        $set: {
+          fullName: fullName,
+          address: address,
+          dob: parsedDob
+        }
+      },
       { new: true, runValidators: true }
     );
 
@@ -44,16 +44,15 @@ exports.createTenantProfile = async (req, res) => {
 // 3. Update Tenant Profile (without photo)
 exports.updateTenantProfile = async (req, res) => {
   try {
-    const {fullName,phonenumber,address}=req.body;
+    const { fullName, address } = req.body;
     const tenant = await User.findOneAndUpdate(
       { _id: req.userId },
       {
-    $set: {
-      fullName: fullName,
-      phonenumber: phonenumber,
-      address: address
-    }
-  },
+        $set: {
+          fullName: fullName,
+          address: address
+        }
+      },
       { new: true, runValidators: true }
     );
     if (!tenant) return res.status(404).json({ message: "Profile not found" });
@@ -84,6 +83,48 @@ exports.uploadTenantPhoto = async (req, res) => {
     res.json({ message: "Photo uploaded successfully", tenant });
   } catch (err) {
     console.error("Error uploading photo:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 5. Upload/Update Document
+exports.uploadTenantDocument = async (req, res) => {
+  try {
+    const { docName } = req.body;
+
+    if (!docName || !req.file) {
+      return res.status(400).json({ message: "Document name and file are required" });
+    }
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "tenant_documents"
+    });
+
+    const tenant = await User.findOne({ _id: req.userId });
+    if (!tenant) return res.status(404).json({ message: "Profile not found" });
+
+    // Ensure documents array exists
+    if (!tenant.documents) tenant.documents = [];
+
+    // Check if document already exists
+    const existingDocIndex = tenant.documents.findIndex(
+      (doc) => doc.docName.toLowerCase() === docName.toLowerCase()
+    );
+
+    if (existingDocIndex > -1) {
+      // Update existing document URL
+      tenant.documents[existingDocIndex].url = result.secure_url;
+    } else {
+      // Add new document
+      tenant.documents.push({ docName, url: result.secure_url });
+    }
+
+    await tenant.save();
+
+    res.json({ message: "Document uploaded successfully", documents: tenant.documents });
+  } catch (err) {
+    console.error("Error uploading document:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

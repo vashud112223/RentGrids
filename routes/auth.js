@@ -7,6 +7,7 @@ const { ValidateUser, authMiddleware } = require("../utils/validation");
 const nodemailer = require("nodemailer");
 const { sendOtp, verifyOtp } = require("../utils/otp");
 const passport = require("passport");
+const Landlord = require("../models/Landlord");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const FacebookStrategy = require("passport-facebook").Strategy;
 
@@ -122,6 +123,108 @@ router.patch("/forget-password", async (req, res) => {
   }
 });
 
+
+// REGISTER
+router.post("/owner/register", async (req, res) => {
+  try {
+    ValidateUser(req); // Validate user input
+    const { fullName, emailId, password, phonenumber} = req.body;
+
+    const existingUser = await Landlord.findOne({
+      $or: [{ emailId }, { phonenumber }],
+    });
+
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "EmailId or phonenumber is already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new Landlord({
+      fullName,
+      emailId,
+      password: hashedPassword,
+      phonenumber,
+      // profile,
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// LOGIN
+router.post("/owner/login", async (req, res) => {
+  try {
+    const { userName, password} = req.body;
+
+    if (!userName || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email or password required" });
+    }
+    let user;
+    if (!validator.isEmail(userName)) {
+      user = await Landlord.findOne({ phonenumber: userName });
+    } else {
+      user = await Landlord.findOne({ emailId: userName });
+    }
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const token = generateToken(user);
+    res.cookie("token", token);
+    // res.json({ message: "Login successful", token });
+    res.status(200).send("logged in!!!");
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+//Logout
+router.post("/owner/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "Lax",
+    secure: false,
+  });
+  res.json({ message: "Logout successfully" });
+});
+
+router.patch("/owner/forget-password", async (req, res) => {
+  try {
+    const { emailId, updatedPassword } = req.body;
+    const user = await Landlord.findOne({ emailId: emailId });
+    if (!user) {
+      throw new Error("Invalid Email Id");
+    }
+    if (!validator.isStrongPassword(updatedPassword)) {
+      throw new Error("Enter Strong Password: " + updatedPassword);
+    }
+
+    const passwordHash = await bcrypt.hash(updatedPassword, 10);
+    user.password = passwordHash;
+    console.log(user);
+    await user.save();
+
+    res.json({
+      message: `${user.fullName}, your password is update succesfully`,
+      data: user,
+    });
+  } catch (err) {
+    res.status(400).send("Error on login: " + err.message);
+  }
+});
 // OTP
 const transporter = nodemailer.createTransport({
   service: "gmail",

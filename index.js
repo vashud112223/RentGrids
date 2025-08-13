@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const { connectDb } = require("./configuration/database");
 const {router} = require("./routes/auth");
 const {tenantRouter} = require("./routes/tenantRoutes");
+const { ownerRouter } = require("./routes/ownerRoutes");
+const path = require("path");
 const app = express();
 
 app.use(express.json());
@@ -18,9 +20,10 @@ app.use(cookieParser());
 //   })
 // );
 
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/", router);
 app.use("/",tenantRouter);
+app.use("/",ownerRouter);
 
 // Connect DB and Start Server
 connectDb()

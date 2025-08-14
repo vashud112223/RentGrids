@@ -1,11 +1,22 @@
 const express = require("express");
 const multer = require("multer");
-const authMiddleware = require("../middleware/authMiddleware");
-const { createProperty,updateProperty,updatePropertyStatus } = require("../controllers/propertyController");
+const {authMiddleware} = require("../middleware/authMiddleware");
+const {
+  createProperty,
+  updateProperty,
+  updatePropertyStatus,
+  getOwnerProperties,
+  getPropertyById,
+  deleteProperty,
+  uploadPropertyImages,
+  deletePropertyImage,
+  uploadPropertyDocuments,
+  deletePropertyDocument
+} = require("../controllers/propertyController");
 
 const upload = multer({ dest: "uploads/" });
-
 const propertyRouter = express.Router();
+propertyRouter.get("/properties/:id", authMiddleware, getPropertyById);
 
 propertyRouter.post(
   "/properties",
@@ -19,5 +30,33 @@ propertyRouter.post(
 
 propertyRouter.patch("/properties/:id/status", authMiddleware, updatePropertyStatus);
 propertyRouter.put("/properties/:id", authMiddleware, updateProperty);
+propertyRouter.get("/properties/owner", authMiddleware, getOwnerProperties);
+propertyRouter.delete("/properties/:id", authMiddleware, deleteProperty);
+propertyRouter.post(
+  "/properties/:id/images",
+  authMiddleware,
+  upload.array("images", 10), // Allow up to 10 images
+  uploadPropertyImages
+);
 
-module.exports = {propertyRouter};
+propertyRouter.delete(
+  "/properties/:id/images",
+  authMiddleware,
+  deletePropertyImage
+);
+
+propertyRouter.post(
+  "/properties/:id/documents",
+  authMiddleware,
+  upload.fields([{ name: "documents", maxCount: 10 }]),
+  uploadPropertyDocuments
+);
+
+propertyRouter.delete(
+  "/properties/:id/documents",
+  authMiddleware,
+  deletePropertyDocument
+);
+
+
+module.exports = propertyRouter;

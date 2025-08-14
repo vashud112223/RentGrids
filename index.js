@@ -6,8 +6,10 @@ const { connectDb } = require("./configuration/database");
 const {router} = require("./routes/auth");
 const {tenantRouter} = require("./routes/tenantRoutes");
 const { ownerRouter } = require("./routes/ownerRoutes");
-const { propertyRouter } = require("./routes/propertyRoutes");
+// const {propertyRouter} = require("./routes/propertyRoutes");
+const propertyRouter = require("./routes/propertyRoutes");
 const  featureRouter  = require("./routes/featureRoutes");
+const { amenityRouter}  = require("./routes/amenityRoutes");
 const path = require("path");
 const app = express();
 
@@ -28,6 +30,7 @@ app.use("/",tenantRouter);
 app.use("/",ownerRouter);
 app.use("/",propertyRouter);
 app.use("/",featureRouter);
+app.use("/",amenityRouter);
 
 // Connect DB and Start Server
 connectDb()

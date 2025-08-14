@@ -250,7 +250,7 @@ const getOwnerProperties = async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
 
-    let filter = { ownerId: req.userId }; // Only properties of logged-in user
+    let filter = { ownerId : req.userId }; // Only properties of logged-in user
 
     if (status) filter.status = status; // Optional filter for status
 

@@ -10,7 +10,7 @@ const PropertySchema = new mongoose.Schema(
         type:String
     },
     features: [{ type: mongoose.Schema.Types.ObjectId, ref: "Feature" }],
-amenities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Amenity" }],
+    amenities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Amenity" }],
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Landlord",
@@ -26,7 +26,7 @@ amenities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Amenity" }],
     },
     listingType: {
       type: String,
-      enum: ["rent", "sale"],
+      enum: ["rent"],
       required: true
     },
     monthlyRent: { type: Number },

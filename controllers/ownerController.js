@@ -241,31 +241,53 @@ exports.uploadOwnerPhoto = async (req, res) => {
 
 exports.uploadOwnerFile = async (req, res) => {
   try {
+    // Check if file is uploaded
     if (!req.file) {
       return res.status(400).json({ message: "PDF file is required" });
     }
 
+    // Validate document type
     const { documentType } = req.body;
     if (!documentType) {
       return res.status(400).json({ message: "documentType is required" });
     }
 
-    const newDoc = new Document({
-      ownerId: req.userId,
-      documentType,
-      filePath: req.file.path,
+    // Upload file to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "owner_documents",
+      resource_type: "auto"
     });
 
-    await newDoc.save();
+    // Check if a document already exists for this owner and type
+    let ownerDoc = await Document.findOne({
+      ownerId: req.userId,
+      documentType: documentType
+    });
+
+    if (ownerDoc) {
+      // Update existing document
+      ownerDoc.filePath = result.secure_url;
+      await ownerDoc.save();
+    } else {
+      // Create a new document record
+      ownerDoc = new Document({
+        ownerId: req.userId,
+        documentType,
+        filePath: result.secure_url
+      });
+      await ownerDoc.save();
+    }
 
     res.status(201).json({
       message: "Document uploaded successfully",
-      document: newDoc,
+      document: ownerDoc
     });
+
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error uploading document", error: err.message });
+    res.status(500).json({
+      message: "Error uploading document",
+      error: err.message
+    });
   }
 };
 
@@ -278,8 +300,8 @@ exports.getOwnerDocuments = async (req, res) => {
       return res.status(404).json({ message: "Document not found" });
     }
 
-    const absolutePath = path.resolve(document.filePath);
-    res.sendFile(absolutePath);
+    // Redirect user to Cloudinary file
+    return res.redirect(document.filePath);
   } catch (error) {
     res.status(500).json({
       message: "Error viewing document",
@@ -287,3 +309,4 @@ exports.getOwnerDocuments = async (req, res) => {
     });
   }
 };
+

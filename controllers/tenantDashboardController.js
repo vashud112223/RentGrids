@@ -195,35 +195,42 @@ exports.reapply = async (req, res) => {
  * List only scheduled visits (accepted + with schedule.date).
  */
 exports.getScheduled = async (req, res) => {
-  const tenantId = req.userId;
+  try {
+    const tenantId = req.userId;
 
-  const rows = await VisitRequest.find({
-    tenantId,
-    status: "accepted",
-    "schedule.date": { $ne: null },
-  }).lean();
+    // Find all visit requests for this tenant where status is accepted and schedule date is not null
+    const rows = await VisitRequest.find({
+      tenantId,
+      status: "accepted",
+      "schedule.date": { $ne: null },
+    }).lean();
 
-  const propertyIds = rows.map((r) => r.propertyId);
-  const landlordIds = rows.map((r) => r.landlordId);
+    // Extract all unique property and landlord IDs
+    const propertyIds = rows.map((r) => r.propertyId);
+    const landlordIds = rows.map((r) => r.landlordId);
 
-  const [props, landlords] = await Promise.all([
-    Property.find({ _id: { $in: propertyIds } }).lean(),
-    User.find({ _id: { $in: landlordIds } }).lean(),
-  ]);
+    // Fetch properties and landlords
+    const [props, landlords] = await Promise.all([
+      Property.find({ _id: { $in: propertyIds } }).lean(),
+      User.find({ _id: { $in: landlordIds } }).lean(),
+    ]);
 
-  const pMap = Object.fromEntries(props.map((p) => [p._id.toString(), p]));
-  const lMap = Object.fromEntries(landlords.map((u) => [u._id.toString(), u]));
+    // Convert arrays into quick lookup maps
+    const pMap = Object.fromEntries(props.map((p) => [p._id.toString(), p]));
+    const lMap = Object.fromEntries(landlords.map((u) => [u._id.toString(), u]));
 
-  res.json(
-    rows.map((r) => ({
-      ...mapPropertyCard(
-        pMap[r.propertyId.toString()],
-        lMap[r.landlordId.toString()],
-        r.status
-      ),
-      schedule: r.schedule,
-    }))
-  );
+    // Build full response without filtering
+    res.json(
+      rows.map((r) => ({
+        property: pMap[r.propertyId.toString()] || null,
+        // landlord: lMap[r.landlordId.toString()] || null,
+        visitRequest: r,
+      }))
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 /**
@@ -235,17 +242,18 @@ exports.getSaved = async (req, res) => {
   const ids = rows.map((r) => r.propertyId);
   const props = await Property.find({ _id: { $in: ids } }).lean();
 
-  res.json(
-    props.map((p) => ({
-      propertyId: p._id,
-      title: p.title,
-      location: `${p.area}, ${p.city}`,
-      price: p.price,
-      image: p.images?.[0] || null,
-      savedAt: rows.find((r) => r.propertyId.toString() === p._id.toString())
-        ?.savedAt,
-    }))
-  );
+//   res.json(
+//     props.map((p) => ({
+//       propertyId: p._id,
+//       title: p.title,
+//       location: `${p.area}, ${p.city}`,
+//       price: p.price,
+//       image: p.images?.[0] || null,
+//       savedAt: rows.find((r) => r.propertyId.toString() === p._id.toString())
+//         ?.savedAt,
+//     }))
+//   );
+res.json(props);
 };
 
 exports.saveProperty = async (req, res) => {
@@ -314,19 +322,18 @@ exports.getSimilar = async (req, res) => {
   const similar = await Property.find({
     _id: { $ne: id },
     city: base.city,
-    tags: { $in: base.tags?.slice(0, 3) || [] },
-    active: true,
+    // active: true,
   })
     .limit(6)
     .lean();
-
-  res.json(
-    similar.map((p) => ({
-      propertyId: p._id,
-      title: p.title,
-      location: `${p.area}, ${p.city}`,
-      price: p.price,
-      image: p.images?.[0] || null,
-    }))
-  );
+res.json(similar);
+//   res.json(
+//     similar.map((p) => ({
+//       propertyId: p._id,
+//       title: p.title,
+//       location: `${p.area}, ${p.city}`,
+//       price: p.price,
+//       image: p.images?.[0] || null,
+//     }))
+//   );
 };

@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const cloudinary = require("../configuration/cloudinary");
+const fs = require("fs");
 
 // 1. Get User Profile
 exports.getTenantProfile = async (req, res) => {
@@ -101,6 +102,8 @@ exports.uploadTenantDocument = async (req, res) => {
       folder: "tenant_documents"
     });
 
+     // Clean up local temp file (important!)
+    fs.unlinkSync(req.file.path);
     const tenant = await User.findOne({ _id: req.userId });
     if (!tenant) return res.status(404).json({ message: "Profile not found" });
 

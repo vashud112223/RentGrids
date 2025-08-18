@@ -3,6 +3,10 @@ const VisitRequest = require("../models/VisitRequest");
 const SavedProperty = require("../models/SavedProperty");
 const Property = require("../models/Property");
 const User = require("../models/User");
+const upload = require("../middleware/upload");
+const TenantDashboard = require("../models/TenantDashboard");
+const cloudinary = require("../configuration/cloudinary");
+const fs = require("fs");
 
 /**
  * Utility to shape property card data exactly like cards in images.
@@ -217,7 +221,9 @@ exports.getScheduled = async (req, res) => {
 
     // Convert arrays into quick lookup maps
     const pMap = Object.fromEntries(props.map((p) => [p._id.toString(), p]));
-    const lMap = Object.fromEntries(landlords.map((u) => [u._id.toString(), u]));
+    const lMap = Object.fromEntries(
+      landlords.map((u) => [u._id.toString(), u])
+    );
 
     // Build full response without filtering
     res.json(
@@ -242,18 +248,18 @@ exports.getSaved = async (req, res) => {
   const ids = rows.map((r) => r.propertyId);
   const props = await Property.find({ _id: { $in: ids } }).lean();
 
-//   res.json(
-//     props.map((p) => ({
-//       propertyId: p._id,
-//       title: p.title,
-//       location: `${p.area}, ${p.city}`,
-//       price: p.price,
-//       image: p.images?.[0] || null,
-//       savedAt: rows.find((r) => r.propertyId.toString() === p._id.toString())
-//         ?.savedAt,
-//     }))
-//   );
-res.json(props);
+  //   res.json(
+  //     props.map((p) => ({
+  //       propertyId: p._id,
+  //       title: p.title,
+  //       location: `${p.area}, ${p.city}`,
+  //       price: p.price,
+  //       image: p.images?.[0] || null,
+  //       savedAt: rows.find((r) => r.propertyId.toString() === p._id.toString())
+  //         ?.savedAt,
+  //     }))
+  //   );
+  res.json(props);
 };
 
 exports.saveProperty = async (req, res) => {
@@ -326,14 +332,338 @@ exports.getSimilar = async (req, res) => {
   })
     .limit(6)
     .lean();
-res.json(similar);
-//   res.json(
-//     similar.map((p) => ({
-//       propertyId: p._id,
-//       title: p.title,
-//       location: `${p.area}, ${p.city}`,
-//       price: p.price,
-//       image: p.images?.[0] || null,
-//     }))
-//   );
+  res.json(similar);
+  //   res.json(
+  //     similar.map((p) => ({
+  //       propertyId: p._id,
+  //       title: p.title,
+  //       location: `${p.area}, ${p.city}`,
+  //       price: p.price,
+  //       image: p.images?.[0] || null,
+  //     }))
+  //   );
+};
+
+// 1. Update personal details
+// controllers/tenantController.js
+exports.addPersonalDetails = async (req, res) => {
+  try {
+    const { id } = req.params; // tenantId from URL
+
+    // Check if tenant already has personalDetails
+    const existingTenant = await TenantDashboard.findOne({ tenantId: id });
+
+    if (existingTenant && existingTenant.personalDetails) {
+      return res.status(400).json({
+        message: "Personal details already exist for this tenant",
+      });
+    }
+
+    let tenant;
+
+    if (existingTenant) {
+      // If tenant exists but no personalDetails → update it
+      existingTenant.personalDetails = req.body;
+      tenant = await existingTenant.save();
+    } else {
+      // If tenant doesn't exist → create new record
+      tenant = new TenantDashboard({
+        tenantId: id,
+        personalDetails: req.body,
+      });
+      await tenant.save();
+    }
+
+    res.status(201).json({
+      message: "Tenant personal details saved successfully",
+      data: tenant.personalDetails,
+    });
+    console.log(tenant.personalDetails);
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+};
+
+exports.updatePersonalDetails = async (req, res) => {
+  try {
+    const { id } = req.params; // userId
+    const { personalDetails } = req.body; // personalDetails object
+
+    if (!personalDetails) {
+      return res.status(400).json({ message: "personalDetails is required" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: { personalDetails } }, // update only personalDetails
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      message: "Personal details updated successfully",
+      data: updatedUser.personalDetails,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+/**
+ * ➡️ Update Tenant Property Preferences
+ * PUT /api/tenant/:id/preferences
+ */
+exports.updatePropertyPreferences = async (req, res) => {
+  try {
+    const tenantId = req.params.id;
+    const { propertyPreferences } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      tenantId,
+      { $set: { propertyPreferences } },
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!user) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    res.json({
+      message: " Property Preferences updated",
+      preferences: user.propertyPreferences,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, err });
+  }
+};
+
+// 3. Update lifestyle/preferences
+exports.updatePreferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { preferences } = req.body;
+    const updatedTenant = await User.findByIdAndUpdate(
+      id,
+      { $set: { preferences } },
+      { new: true, runValidators: true }
+    );
+    if (!updatedTenant)
+      return res.status(404).json({ message: "Tenant not found" });
+    res.json({
+      message: " Property Preferences updated",
+      preferences: updatedTenant.preferences,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+};
+
+/**
+ * ➡️ Upload Rental Document
+ * POST /api/tenant/:id/upload-doc
+ */
+
+// 4. Update rental history
+exports.updateRentalHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rentalHistory } = req.body;
+    const updatedTenant = await User.findByIdAndUpdate(
+      id,
+      { $set: { rentalHistory } },
+      { new: true, runValidators: true }
+    );
+    if (!updatedTenant)
+      return res.status(404).json({ message: "Tenant not found" });
+    res.json({
+      message: " Rental history updated",
+      preferences: updatedTenant.rentalHistory,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error });
+  }
+};
+
+// exports.uploadRentalDocument = [
+//   upload.single("document"), // middleware
+//   async (req, res) => {
+//     try {
+//       const { docName } = req.body;
+
+//       if (!docName || !req.file) {
+//         return res
+//           .status(400)
+//           .json({ message: "Document name and file are required" });
+//       }
+
+//       // Upload to Cloudinary
+//       const result = await cloudinary.uploader.upload(req.file.path, {
+//         folder: "rental_documents",
+//       });
+
+//       const tenant = await User.findOne({ _id: req.userId });
+//       if (!tenant)
+//         return res.status(404).json({ message: "Profile not found" });
+
+//       // Ensure documents array exists
+//       if (!tenant.documents) tenant.documents = [];
+
+//       // Check if document already exists
+//       const existingDocIndex = tenant.documents.findIndex(
+//         (doc) => doc.docName.toLowerCase() === docName.toLowerCase()
+//       );
+
+//       if (existingDocIndex > -1) {
+//         // Update existing document URL
+//         tenant.documents[existingDocIndex].url = result.secure_url;
+//       } else {
+//         // Add new document
+//         tenant.documents.push({ docName, url: result.secure_url });
+//       }
+
+//       await tenant.save();
+
+//       res.json({
+//         message: "Document uploaded successfully",
+//         documents: tenant.documents,
+//       });
+//     } catch (err) {
+//       console.error("Error uploading document:", err);
+//       res.status(500).json({ message: "Server error" });
+//     }
+//   },
+// ];
+
+// get all documents
+// exports.getTenantDocuments = async (req, res) => {
+//   try {
+//     const documentId = req.params.id;
+//     const document = await Document.findById(documentId);
+
+//     if (!document) {
+//       return res.status(404).json({ message: "Document not found" });
+//     }
+
+//     // Redirect user to Cloudinary file
+//     return res.redirect(document.filePath);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Error viewing document",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+// ✅ Get all documents of a tenant by ID
+exports.getTenantDocuments = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    const tenant = await User.findById(id).select("documents name email");
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    return res.status(200).json({
+      message: "Documents fetched successfully",
+      tenant: {
+        id: tenant._id,
+        name: tenant.name,
+        email: tenant.email,
+      },
+      documents: tenant.documents || [],
+    });
+  } catch (err) {
+    console.error("Error fetching tenant documents:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * ➡️ Upload Video Intro
+ * POST /api/tenant/:id/upload-video
+ */
+exports.uploadVideoIntro = [
+  upload.single("video"), // multer middleware
+  async (req, res) => {
+    try {
+      const tenantId = req.params.id;
+      const user = await User.findById(tenantId);
+
+      if (!user) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Video file is required" });
+      }
+
+      // Upload to Cloudinary
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "tenant_video",
+        resource_type: "video" // important for videos
+      });
+
+      // Remove local file after upload
+      fs.unlinkSync(req.file.path);
+
+      // Save the video URL to user's documents array
+      if (!user.documents) user.documents = [];
+      user.documents.push({
+        docName: "Video Intro",
+        url: result.secure_url
+      });
+
+      // Optional: also save in videoIntro field
+      user.videoIntro = result.secure_url;
+
+      await user.save();
+
+      res.json({
+        message: "Video intro uploaded successfully",
+        videoUrl: result.secure_url
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message });
+    }
+  },
+];
+
+// 6. Get daily applications
+exports.getDailyApplications = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenant = await Tenant.findById(id);
+    if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+    res.json(tenant.dailyApplications);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 7. Update daily applications
+exports.updateDailyApplications = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { submitted, remaining } = req.body;
+    const tenant = await Tenant.findById(id);
+    if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+
+    if (submitted !== undefined) tenant.dailyApplications.submitted = submitted;
+    if (remaining !== undefined) tenant.dailyApplications.remaining = remaining;
+
+    await tenant.save();
+    res.json(tenant.dailyApplications);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

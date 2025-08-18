@@ -25,7 +25,11 @@ const fileFilter = (req, file, cb) => {
     "image/jpeg",
     "image/png",
     "image/jpg",
-    "application/pdf"
+    "application/pdf",
+     "video/mp4",
+    "video/quicktime", // .mov files
+    "video/x-matroska", // .mkv files
+    "video/webm"
   ];
   if (!allowedTypes.includes(file.mimetype)) {
     return cb(new Error("Invalid file type"), false);

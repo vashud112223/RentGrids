@@ -45,7 +45,7 @@ exports.ownerRegister = async (req, res) => {
     });
 
     await newUser.save();
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({ message: "User registered successfully",newUser });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

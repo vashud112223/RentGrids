@@ -46,8 +46,8 @@ const UserSchema = new mongoose.Schema(
         message: (props) => `Invalid Phone Number: ${props.value}`,
       },
     },
-    dob:{
-      type:Date
+    dob: {
+      type: Date,
     },
     authProvider: {
       type: String,
@@ -62,22 +62,55 @@ const UserSchema = new mongoose.Schema(
     documents: [
       {
         docName: { type: String, required: true },
-        url: { type: String, required: true }
-      }
+        url: { type: String, required: true },
+      },
     ],
-      address: {
-    type: String
-  },
-  
-      photo: {
-  type: String, // URL of the tenant's photo
-  default: null
-  },
-      // Status Flags
-  isActive: {
-    type: Boolean,
-    default: true
-  },
+    address: {
+      type: String,
+    },
+
+    photo: {
+      type: String, // URL of the tenant's photo
+      default: null,
+    },
+    // Status Flags
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    // ✅ Tenant Application Fields
+    propertyPreferences: {
+      bhkType: String,
+      furnishingType: String,
+      amenities: [String],
+      occupants: Number,
+      budgetMin: Number,
+      budgetMax: Number,
+      location: String,
+      leaseDuration: String,
+      moveInDate: Date,
+    },
+    preferences: {
+      gender: String,
+      maritalStatus: String,
+      smoker: Boolean,
+      eating: String,
+      language: String,
+      pet: Boolean,
+      coupleFriendly: Boolean,
+    },
+    rentalHistory: {
+      duration: String,
+      landlordContact: String,
+      previousAddress: String,
+      documents: [String],
+    },
+    videoIntro: { type: String }, // file path
+    dailyApplications: {
+      submitted: { type: Number, default: 0 },
+      remaining: { type: Number, default: 3 },
+    },
   },
   {
     timestamps: true,
@@ -92,7 +125,8 @@ UserSchema.pre("validate", function (next) {
       this.invalidate("phonenumber", "Phone number is required");
   } else {
     // For social login, providerId must be provided
-    if (!this.providerId) this.invalidate("providerId", "Provider ID is required");
+    if (!this.providerId)
+      this.invalidate("providerId", "Provider ID is required");
   }
   next();
 });

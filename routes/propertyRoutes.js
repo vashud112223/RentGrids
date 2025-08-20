@@ -11,13 +11,17 @@ const {
   uploadPropertyImages,
   deletePropertyImage,
   uploadPropertyDocuments,
-  deletePropertyDocument
+  deletePropertyDocument,
+  getAllPropertiesFilter
 } = require("../controllers/propertyController");
+
 
 const upload = multer({ dest: "uploads/" });
 const propertyRouter = express.Router();
+propertyRouter.get("/properties", getAllPropertiesFilter);
 propertyRouter.get("/properties/owner", authMiddleware, getOwnerProperties);
 propertyRouter.get("/properties/:id", authMiddleware, getPropertyById);
+propertyRouter.get("/properties/:id",getPropertyById);
 
 propertyRouter.post(
   "/properties",

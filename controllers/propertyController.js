@@ -23,6 +23,85 @@ const uploadToCloudinary = (fileBuffer, folder) => {
 //   res.json({ body: req.body, files: req.files });
 // };
 
+// const Property = require("../models/Property");
+
+// GET ALL PROPERTIES with Advanced Filters
+const getAllPropertiesFilter = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      city,
+      minBudget,
+      maxBudget,
+      availableFrom,
+      availableFor,
+      propertyType,
+      furnishType,
+      bhk,
+      minArea,
+      maxArea,
+      bathroom,
+      floorNo
+    } = req.query;
+
+    let filter = {}; // 👈 start with empty filter for debugging
+
+    if (city) filter.city = city;
+    if (propertyType) filter.propertyType = propertyType;
+    if (furnishType) filter.furnishType = furnishType;
+    if (bhk) filter.bhk = Number(bhk);
+    if (bathroom) filter.bathroom = Number(bathroom);
+    if (floorNo) filter.floorNo = Number(floorNo);
+    if (availableFor) filter.availableFor = availableFor;
+
+    if (minBudget || maxBudget) {
+      filter.monthlyRent = {};
+      if (minBudget) filter.monthlyRent.$gte = Number(minBudget);
+      if (maxBudget) filter.monthlyRent.$lte = Number(maxBudget);
+    }
+
+    if (minArea || maxArea) {
+      filter.area = {};
+      if (minArea) filter.area.$gte = Number(minArea);
+      if (maxArea) filter.area.$lte = Number(maxArea);
+    }
+
+    if (availableFrom) {
+      filter.availableFrom = { $lte: new Date(availableFrom) };
+    }
+
+    console.log("Applied filter:", filter); // 👈 Debugging line
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const properties = await Property.find(filter)
+      .populate("features amenities", "name")
+      .populate("ownerId", "name email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Property.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / Number(limit)),
+      filtersApplied: filter,
+      data: properties
+    });
+  } catch (error) {
+    console.error("Error fetching properties:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+
 const createProperty = async (req, res) => {
   try {
     const {
@@ -77,17 +156,14 @@ const createProperty = async (req, res) => {
 
     // ====== Handle Image Upload ======
     let imageUrls = [];
-    console.log(req.files);
     if (req.files && req.files.images) {
       for (const file of req.files.images) {
         let result;
         if (file.path) {
-          // Disk storage
           result = await cloudinary.uploader.upload(file.path, {
             folder: "property_images"
           });
         } else {
-          // Memory storage
           result = await uploadToCloudinary(file.buffer, "property_images");
         }
         imageUrls.push(result.secure_url);
@@ -110,8 +186,13 @@ const createProperty = async (req, res) => {
       }
     }
 
+    // ====== Generate Unique Pid ======
+    const propertyCount = await Property.countDocuments();
+    const pid = `REN${(propertyCount + 1).toString().padStart(4, "0")}`;
+
     // ====== Save to DB ======
     const property = new Property({
+      pid,
       ownerId: req.userId,
       title,
       description,
@@ -162,7 +243,7 @@ const createProperty = async (req, res) => {
 
 const updateProperty = async (req, res) => {
   try {
-    const propertyId = req.params.id;
+    const propertyPid = req.params.id; // now using pid instead of _id
     const updateData = {
       title: req.body.title,
       description: req.body.description,
@@ -170,13 +251,13 @@ const updateProperty = async (req, res) => {
       status: req.body.status
     };
 
-    // Remove undefined or empty values so they won't overwrite existing data
+    // Remove undefined or empty values
     Object.keys(updateData).forEach(
       (key) => updateData[key] === undefined && delete updateData[key]
     );
 
-    const updatedProperty = await Property.findByIdAndUpdate(
-      propertyId,
+    const updatedProperty = await Property.findOneAndUpdate(
+      { pid: propertyPid }, // find by pid
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -191,7 +272,7 @@ const updateProperty = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        id: updatedProperty._id,
+        pid: updatedProperty.pid,
         title: updatedProperty.title
       }
     });
@@ -204,10 +285,11 @@ const updateProperty = async (req, res) => {
   }
 };
 
+
 // PATCH - Update Property Status
 const updatePropertyStatus = async (req, res) => {
   try {
-    const propertyId = req.params.id;
+    const propertyPid = req.params.id;
     const { status } = req.body;
 
     // Validate status
@@ -218,12 +300,12 @@ const updatePropertyStatus = async (req, res) => {
         message: "Invalid status value. Allowed: draft, published"
       });
     }
+const updatedProperty = await Property.findOneAndUpdate(
+  { pid: propertyPid }, // match by pid, not _id
+  { $set: { status } },
+  { new: true, runValidators: true }
+);
 
-    const updatedProperty = await Property.findByIdAndUpdate(
-      propertyId,
-      { $set: { status } },
-      { new: true, runValidators: true }
-    );
 
     if (!updatedProperty) {
       return res.status(404).json({
@@ -283,10 +365,10 @@ const getOwnerProperties = async (req, res) => {
 // GET - Property by ID (Restricted to Owner)
 const getPropertyById = async (req, res) => {
   try {
-    const propertyId = req.params.id;
+    const propertyPid = req.params.id;
 
     const property = await Property.findOne({
-      _id: propertyId,
+      pid: propertyPid,
       ownerId: req.userId // req.userId comes from authMiddleware
     })
       .populate("ownerId", "fullName emailId phonenumber")
@@ -316,11 +398,11 @@ const getPropertyById = async (req, res) => {
 // DELETE - Property by ID (Only Owner can delete)
 const deleteProperty = async (req, res) => {
   try {
-    const propertyId = req.params.id;
+    const propertyPid = req.params.id;
 
     // Find property and check if owner matches
     const property = await Property.findOne({
-      _id: propertyId,
+      pid: propertyPid,
       ownerId: req.userId
     });
 
@@ -353,7 +435,7 @@ const uploadPropertyImages = async (req, res) => {
 
     // Check if property exists and belongs to the logged-in user
     const property = await Property.findOne({
-      _id: propertyId,
+      pid: propertyId,
       ownerId: req.userId
     });
 
@@ -412,7 +494,7 @@ const deletePropertyImage = async (req, res) => {
 
     // Find property and check ownership
     const property = await Property.findOne({
-      _id: propertyId,
+      pid: propertyId,
       ownerId: req.userId
     });
 
@@ -462,7 +544,7 @@ const uploadPropertyDocuments = async (req, res) => {
 
     // Check if property exists and belongs to current user
     const property = await Property.findOne({
-      _id: propertyId,
+      pid: propertyId,
       ownerId: req.userId
     });
 
@@ -528,7 +610,7 @@ const deletePropertyDocument = async (req, res) => {
 
     // Find property & verify ownership
     const property = await Property.findOne({
-      _id: propertyId,
+      pid: propertyId,
       ownerId: req.userId
     });
 
@@ -583,5 +665,6 @@ module.exports = {
   uploadPropertyImages,
   deletePropertyImage,
   uploadPropertyDocuments,
-  deletePropertyDocument
+  deletePropertyDocument,
+  getAllPropertiesFilter
 };

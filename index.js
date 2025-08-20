@@ -10,7 +10,14 @@ const { ownerRouter } = require("./routes/ownerRoutes");
 const propertyRouter = require("./routes/propertyRoutes");
 const  featureRouter  = require("./routes/featureRoutes");
 const { amenityRouter}  = require("./routes/amenityRoutes");
+const { tenantDashboardRouter } = require("./routes/tenant");
+const { createServer } = require("http");
+const { Server } = require("socket.io");
 const path = require("path");
+const chatRouter = require("./routes/chatRoutes");
+const messageRouter = require("./routes/messageRoutes");
+const { searchChats } = require("./controllers/chatController");
+
 const app = express();
 
 app.use(express.json());
@@ -31,6 +38,20 @@ app.use("/",ownerRouter);
 app.use("/",propertyRouter);
 app.use("/",featureRouter);
 app.use("/",amenityRouter);
+app.use("/",tenantDashboardRouter);
+app.use("/",chatRouter);
+app.use("/",messageRouter);
+app.use("/",searchChats);
+
+
+const server = createServer(app);
+
+// Socket setup
+const io = new Server(server, {
+  pingTimeout: 60000,
+  cors: { origin: "*" },
+});
+require("./socket/socket")(io);
 
 // Connect DB and Start Server
 connectDb()

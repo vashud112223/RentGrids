@@ -10,6 +10,7 @@ const { ownerRouter } = require("./routes/ownerRoutes");
 const propertyRouter = require("./routes/propertyRoutes");
 const  featureRouter  = require("./routes/featureRoutes");
 const { amenityRouter}  = require("./routes/amenityRoutes");
+const scheduleRouter =require("./routes/scheduleRoutes");
 const { tenantDashboardRouter } = require("./routes/tenant");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -17,6 +18,7 @@ const path = require("path");
 const chatRouter = require("./routes/chatRoutes");
 const messageRouter = require("./routes/messageRoutes");
 const { searchChats } = require("./controllers/chatController");
+const {openairouter}=require("./routes/openaiRoutes");
 
 const app = express();
 
@@ -42,7 +44,8 @@ app.use("/",tenantDashboardRouter);
 app.use("/",chatRouter);
 app.use("/",messageRouter);
 app.use("/",searchChats);
-
+app.use("/",scheduleRouter);
+app.use("/",openairouter);
 
 const server = createServer(app);
 

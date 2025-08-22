@@ -21,7 +21,7 @@ const propertyRouter = express.Router();
 propertyRouter.get("/properties", getAllPropertiesFilter);
 propertyRouter.get("/properties/owner", authMiddleware, getOwnerProperties);
 propertyRouter.get("/properties/:id", authMiddleware, getPropertyById);
-propertyRouter.get("/properties/:id",getPropertyById);
+propertyRouter.get("/propertiesGlobal/:id",getPropertyById);
 
 propertyRouter.post(
   "/properties",

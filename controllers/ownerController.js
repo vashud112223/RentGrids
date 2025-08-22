@@ -77,7 +77,7 @@ exports.ownerLogin = async (req, res) => {
     const token = generateToken(user);
     res.cookie("token", token);
     // res.json({ message: "Login successful", token });
-    res.status(200).send("logged in!!!");
+    res.status(200).json({ message: "Login successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

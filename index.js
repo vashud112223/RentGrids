@@ -18,20 +18,20 @@ const path = require("path");
 const chatRouter = require("./routes/chatRoutes");
 const messageRouter = require("./routes/messageRoutes");
 const { searchChats } = require("./controllers/chatController");
-const {openairouter}=require("./routes/openaiRoutes");
+// const {openairouter}=require("./routes/openaiRoutes");
 
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173",
-//     credentials: true,
-//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-//   })
-// );
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  })
+);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/", router);
@@ -45,7 +45,7 @@ app.use("/",chatRouter);
 app.use("/",messageRouter);
 app.use("/",searchChats);
 app.use("/",scheduleRouter);
-app.use("/",openairouter);
+// app.use("/",openairouter);
 
 const server = createServer(app);
 

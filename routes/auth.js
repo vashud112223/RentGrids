@@ -182,6 +182,7 @@ passport.use(
 
 
 // Start Google login (pass role as state param)
+// http://localhost:7000/auth/google?role=user
 router.get("/auth/google", (req, res, next) => {
   const role = req.query.role || "user";
   passport.authenticate("google", {

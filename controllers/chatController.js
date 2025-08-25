@@ -1,5 +1,6 @@
 const Chat = require("../models/Chat");
 const User = require("../models/User");
+const Message = require("../models/Message");
 
 exports.accessChat = async (req, res) => {
   const { userId } = req.body;
@@ -88,5 +89,32 @@ exports.searchChats = async (req, res) => {
   } catch (error) {
     console.error("Search Chats Error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// delete the chat
+exports.deleteChat = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+
+    // Only members of the chat can delete it
+    if (!chat.users.includes(req.userId)) {
+      return res.status(403).json({ message: "Not authorized to delete this chat" });
+    }
+
+    // Delete all messages of this chat
+    await Message.deleteMany({ chat: chatId });
+
+    // Delete chat itself
+    await Chat.findByIdAndDelete(chatId);
+
+    res.json({ message: "Chat and its messages deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };

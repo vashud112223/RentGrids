@@ -76,7 +76,7 @@ router.post("/login", async (req, res) => {
     const token = generateToken(user);
     res.cookie("token", token);
     // res.json({ message: "Login successful", token });
-    res.status(200).send("logged in!!!");
+    res.status(200).json({ message: "Login successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -182,6 +182,7 @@ passport.use(
 
 
 // Start Google login (pass role as state param)
+// http://localhost:7000/auth/google?role=user
 router.get("/auth/google", (req, res, next) => {
   const role = req.query.role || "user";
   passport.authenticate("google", {

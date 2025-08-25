@@ -302,7 +302,7 @@ exports.landlordAct = async (req, res) => {
     doc.status = "rejected";
     doc.schedule = undefined;
   } else if (action === "schedule") {
-    doc.status = "accepted";
+    doc.status = "scheduled";
     doc.schedule = { date, note };
   } else {
     return res.status(400).json({ message: "Invalid action" });
@@ -654,16 +654,36 @@ exports.getDailyApplications = async (req, res) => {
 exports.updateDailyApplications = async (req, res) => {
   try {
     const { id } = req.params;
-    const { submitted, remaining } = req.body;
-    const tenant = await Tenant.findById(id);
+    const DAILY_LIMIT = 10; // set your daily application limit
+
+    const tenant = await User.findById(id);
     if (!tenant) return res.status(404).json({ message: "Tenant not found" });
 
-    if (submitted !== undefined) tenant.dailyApplications.submitted = submitted;
-    if (remaining !== undefined) tenant.dailyApplications.remaining = remaining;
+    // Count today's scheduled visits
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const scheduledCount = await VisitRequest.countDocuments({
+      tenantId: id,
+      status: "accepted", // only count accepted visits
+      "schedule.date": { $gte: today, $lt: tomorrow }, // only today's visits
+    });
+
+    // Update tenant.dailyApplications
+    tenant.dailyApplications.submitted = scheduledCount;
+    tenant.dailyApplications.remaining = Math.max(DAILY_LIMIT - scheduledCount, 0);
 
     await tenant.save();
-    res.json(tenant.dailyApplications);
+
+    res.json({
+      dailyLimit: DAILY_LIMIT,
+      submitted: tenant.dailyApplications.submitted,
+      remaining: tenant.dailyApplications.remaining,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+

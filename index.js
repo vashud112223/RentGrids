@@ -43,9 +43,10 @@ app.use("/",amenityRouter);
 app.use("/",tenantDashboardRouter);
 app.use("/",chatRouter);
 app.use("/",messageRouter);
+app.use("/",openairouter);
 app.use("/",searchChats);
 app.use("/",scheduleRouter);
-app.use("/",openairouter);
+
 
 const server = createServer(app);
 

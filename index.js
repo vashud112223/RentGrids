@@ -17,7 +17,6 @@ const { Server } = require("socket.io");
 const path = require("path");
 const chatRouter = require("./routes/chatRoutes");
 const messageRouter = require("./routes/messageRoutes");
-const { searchChats } = require("./controllers/chatController");
 // const {openairouter}=require("./routes/openaiRoutes");
 
 const app = express();
@@ -43,8 +42,7 @@ app.use("/",amenityRouter);
 app.use("/",tenantDashboardRouter);
 app.use("/",chatRouter);
 app.use("/",messageRouter);
-app.use("/",openairouter);
-app.use("/",searchChats);
+// app.use("/",openairouter);
 app.use("/",scheduleRouter);
 
 

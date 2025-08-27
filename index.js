@@ -20,6 +20,7 @@ const messageRouter = require("./routes/messageRoutes");
 const { searchChats } = require("./controllers/chatController");
 const {openairouter}=require("./routes/openaiRoutes");
 const {preferredTenantRouter}=require("./routes/preferedTenantsRoutes");
+// const {openairouter}=require("./routes/openaiRoutes");
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/",messageRouter);
 app.use("/",openairouter);
 app.use("/",preferredTenantRouter);
 app.use("/",searchChats);
+app.use("/",openairouter);
 app.use("/",scheduleRouter);
 
 

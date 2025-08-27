@@ -47,7 +47,7 @@ app.use("/",chatRouter);
 app.use("/",messageRouter);
 app.use("/",openairouter);
 app.use("/",preferredTenantRouter);
-app.use("/",searchChats);
+// app.use("/",searchChats);
 app.use("/",openairouter);
 app.use("/",scheduleRouter);
 

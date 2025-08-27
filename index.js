@@ -18,7 +18,8 @@ const path = require("path");
 const chatRouter = require("./routes/chatRoutes");
 const messageRouter = require("./routes/messageRoutes");
 const { searchChats } = require("./controllers/chatController");
-// const {openairouter}=require("./routes/openaiRoutes");
+const {openairouter}=require("./routes/openaiRoutes");
+const {preferredTenantRouter}=require("./routes/preferedTenantsRoutes");
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/",tenantDashboardRouter);
 app.use("/",chatRouter);
 app.use("/",messageRouter);
 app.use("/",openairouter);
+app.use("/",preferredTenantRouter);
 app.use("/",searchChats);
 app.use("/",scheduleRouter);
 

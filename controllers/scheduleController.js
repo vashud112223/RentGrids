@@ -6,6 +6,137 @@ const Property = require("../models/Property");
 // const Property = require("../models/Property");
 const User = require("../models/User"); // assuming you have this
 
+// Get all tenants for a particular property pid
+
+const getSortedTenantsForProperty = async (req, res) => {
+  try {
+    const { pid } = req.params;
+
+    // Find property by pid
+    const property = await Property.findOne({ pid });
+    if (!property) {
+      return res.status(404).json({ success: false, message: "Property not found" });
+    }
+
+    // Get preferred tenant rules for this property
+    const preferred = await PreferredTenant.findOne({ property: property._id });
+    if (!preferred) {
+      return res.status(404).json({
+        success: false,
+        message: "Preferred tenant rules not set for this property"
+      });
+    }
+
+    // Get all schedules with tenant details
+    const schedules = await Schedule.find({ property: property._id })
+      .populate("tenant", "fullName emailId phoneNumber gender profession maritalStatus age");
+
+    if (!schedules.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No tenants have scheduled visits",
+        data: []
+      });
+    }
+
+    // Calculate match score for each tenant
+    const scoredTenants = schedules.map((s) => {
+      const tenant = s.tenant;
+      let score = 0;
+
+      if (!tenant) return null;
+
+      // Example scoring rules
+      if (preferred.gender && tenant.gender === preferred.gender) score += 2;
+      if (preferred.profession && tenant.profession === preferred.profession) score += 2;
+      if (preferred.maritalStatus && tenant.maritalStatus === preferred.maritalStatus) score += 1;
+
+      // Age range check
+      if (preferred.ageRange && tenant.age) {
+        const [minAge, maxAge] = preferred.ageRange;
+        if (tenant.age >= minAge && tenant.age <= maxAge) score += 2;
+      }
+
+      return {
+        tenant,
+        scheduleDate: s.date,
+        scheduleTime: s.time,
+        score
+      };
+    }).filter(Boolean);
+
+    // Sort by score (highest first)
+    scoredTenants.sort((a, b) => b.score - a.score);
+
+    res.status(200).json({
+      success: true,
+      property: { pid: property.pid, title: property.title },
+      totalTenants: scoredTenants.length,
+      data: scoredTenants
+    });
+  } catch (error) {
+    console.error("Error fetching sorted tenants:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// module.exports = {  };
+
+const getTenantsForProperty = async (req, res) => {
+  try {
+    const { pid } = req.params;
+
+    // 1. Find property by pid
+    const property = await Property.findOne({ pid });
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found"
+      });
+    }
+
+    // 2. Fetch schedules for this property and populate tenant details
+    const schedules = await Schedule.find({ property: property._id })
+      .populate("tenant", "fullName emailId phoneNumber")
+      .sort({ date: 1 });
+
+    if (!schedules.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No tenants have scheduled visits for this property yet",
+        data: []
+      });
+    }
+
+    // 3. Extract tenant info (remove duplicates if tenant scheduled multiple times)
+    const tenantsMap = new Map();
+    schedules.forEach((s) => {
+      if (s.tenant) {
+        tenantsMap.set(s.tenant._id.toString(), s.tenant);
+      }
+    });
+
+    const tenants = Array.from(tenantsMap.values());
+
+    res.status(200).json({
+      success: true,
+      property: { pid: property.pid, title: property.title },
+      totalTenants: tenants.length,
+      data: tenants
+    });
+  } catch (error) {
+    console.error("Error fetching tenants for property:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+// module.exports = {  };
+
+
+
 const createSchedule = async (req, res) => {
   try {
     const { property, date, time } = req.body;
@@ -189,5 +320,7 @@ module.exports = {
   getTenantSchedules,
   getOwnerSchedules,
   updateScheduleStatus,
-  deleteSchedule
+  deleteSchedule,
+  getTenantsForProperty,
+  getSortedTenantsForProperty
 };

@@ -145,7 +145,7 @@ const UserSchema = new mongoose.Schema(
       },
       furnishingType: {
         type: String,
-        enum: ["furnished", "semi-furnished", "unfurnished"],
+        enum: ["Furnished", "Semi-Furnished", "Unfurnished"],
         // required: [true, "Furnishing type is required"],
       },
       amenities: {
@@ -181,7 +181,7 @@ const UserSchema = new mongoose.Schema(
       },
       leaseDuration: {
         type: String,
-        enum: ["6 months", "1 year", "2 years", "3 years+"],
+        enum: ["6", "1", "2", "3"],
       },
       moveInDate: {
         type: Date,
@@ -192,13 +192,13 @@ const UserSchema = new mongoose.Schema(
       },
     },
     preferences: {
-      gender: { type: String, enum: ["male", "female", "other"] },
+      gender: { type: String, enum: ["Male", "Female", "Other"] },
       maritalStatus: {
         type: String,
-        enum: ["single", "married", "divorced", "widowed"],
+        enum: ["Single", "Married", "In a relationship"],
       },
       smoker: { type: Boolean, default: false },
-      eating: { type: String, enum: ["veg", "non-veg", "vegan", "other"] },
+      eating: { type: String, enum: ["Vegetarian", "Non-Vegetarian", "Vegan", "Jain"] },
       language: { type: String, minlength: 2, maxlength: 30 },
       pet: { type: Boolean, default: false },
       coupleFriendly: { type: Boolean, default: false },

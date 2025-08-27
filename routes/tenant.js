@@ -22,14 +22,14 @@ tenantDashboardRouter.patch("/landlord/requests/:id", authMiddleware, c.landlord
 tenantDashboardRouter.get("/properties/:id/similar", authMiddleware, c.getSimilar);
 
 // tenant profile management
-tenantDashboardRouter.patch("/tenant/:id/personal-details", authMiddleware, c.updatePersonalDetails);
+tenantDashboardRouter.patch("/tenant/personal-details", authMiddleware, c.updatePersonalDetails);
 // tenantDashboardRouter.post("/tenant/:id/personal-details", authMiddleware, c.addPersonalDetails);
-tenantDashboardRouter.put("/tenant/:id/property-preferences", authMiddleware, c.updatePropertyPreferences);
-tenantDashboardRouter.put("/tenant/:id/preferences", authMiddleware, c.updatePreferences);
-tenantDashboardRouter.put("/tenant/:id/rental-history", authMiddleware, c.updateRentalHistory);
+tenantDashboardRouter.put("/tenant/property-preferences", authMiddleware, c.updatePropertyPreferences);
+tenantDashboardRouter.put("/tenant/preferences", authMiddleware, c.updatePreferences);
+tenantDashboardRouter.put("/tenant/rental-history", authMiddleware, c.updateRentalHistory);
 // tenantDashboardRouter.post("/tenant/rental-docs", authMiddleware, upload.single("file"), c.uploadRentalDocument);
-tenantDashboardRouter.get("/tenant/view-documents/:id", authMiddleware, c.getTenantDocuments);
-tenantDashboardRouter.post("/tenant/:id/video-intro", authMiddleware, c.uploadVideoIntro);
+tenantDashboardRouter.get("/tenant/view-documents", authMiddleware, c.getTenantDocuments);
+tenantDashboardRouter.post("/tenant/video-intro", authMiddleware, c.uploadVideoIntro);
 tenantDashboardRouter.get("/tenant/:id/daily-applications", authMiddleware, c.getDailyApplications);
 tenantDashboardRouter.patch("/tenant/:id/daily-applications", authMiddleware, c.updateDailyApplications);
 

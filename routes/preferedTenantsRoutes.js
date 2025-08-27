@@ -4,7 +4,7 @@ const {
   getPreferredTenants,
   updatePreferredTenant,
   deletePreferredTenant
-} = require("../controllers/preferredTenantController");
+} = require("../controllers/preferedTenantController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
 

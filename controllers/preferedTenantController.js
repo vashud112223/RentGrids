@@ -1,4 +1,4 @@
-const PreferredTenant = require("../models/PreferredTenant");
+const PreferredTenant = require("../models/PreferedTenant");
 
 // CREATE - Add Preferred Tenant
 const createPreferredTenant = async (req, res) => {

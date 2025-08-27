@@ -17,7 +17,7 @@ const { Server } = require("socket.io");
 const path = require("path");
 const chatRouter = require("./routes/chatRoutes");
 const messageRouter = require("./routes/messageRoutes");
-// const {openairouter}=require("./routes/openaiRoutes");
+const {openairouter}=require("./routes/openaiRoutes");
 
 const app = express();
 
@@ -42,7 +42,7 @@ app.use("/",amenityRouter);
 app.use("/",tenantDashboardRouter);
 app.use("/",chatRouter);
 app.use("/",messageRouter);
-// app.use("/",openairouter);
+app.use("/",openairouter);
 app.use("/",scheduleRouter);
 
 
@@ -59,7 +59,7 @@ require("./socket/socket")(io);
 connectDb()
   .then(() => {
     console.log("Database connection established");
-    app.listen(process.env.PORT, () => {
+    server.listen(process.env.PORT, () => {
       console.log(`Server is successfully on port ${process.env.PORT}`);
     });
   })

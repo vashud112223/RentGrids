@@ -95,8 +95,8 @@ router.post("/logout", (req, res) => {
 // Forget password
 router.patch("/forget-password", async (req, res) => {
   try {
-    const { emailId, updatedPassword } = req.body;
-    const user = await User.findOne({ emailId: emailId });
+    const { email, updatedPassword } = req.body;
+    const user = await User.findOne({ emailId: email });
     if (!user) {
       throw new Error("Invalid Email Id");
     }

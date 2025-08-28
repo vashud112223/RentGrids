@@ -7,6 +7,7 @@ const {router} = require("./routes/auth");
 const {tenantRouter} = require("./routes/tenantRoutes");
 const { ownerRouter } = require("./routes/ownerRoutes");
 // const {propertyRouter} = require("./routes/propertyRoutes");
+const subscriptionRouter = require("./routes/subscriptionRoutes");
 const propertyRouter = require("./routes/propertyRoutes");
 const  featureRouter  = require("./routes/featureRoutes");
 const { amenityRouter}  = require("./routes/amenityRoutes");
@@ -15,16 +16,16 @@ const { tenantDashboardRouter } = require("./routes/tenant");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const subscriptionFeaturesRouter = require("./routes/subscriptionFeaturesRoutes");
 const chatRouter = require("./routes/chatRoutes");
 const messageRouter = require("./routes/messageRoutes");
-<<<<<<< HEAD
 const {openairouter}=require("./routes/openaiRoutes");
-=======
+const subscriptionfeatureRouter = require("./routes/subscriptionFeaturesRoutes");
 const { searchChats } = require("./controllers/chatController");
-const {openairouter}=require("./routes/openaiRoutes");
+const subscriptionUserrouter=require("./routes/subscriptionUserRoutes")
+// const {openairouter}=require("./routes/openaiRoutes");
 const {preferredTenantRouter}=require("./routes/preferedTenantsRoutes");
 // const {openairouter}=require("./routes/openaiRoutes");
->>>>>>> 6705bdc6974fdfe2b2fa8f361266910f527848fa
 
 const app = express();
 
@@ -39,6 +40,9 @@ app.use(
   })
 );
 
+
+app.use("/", subscriptionfeatureRouter);
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/", router);
 app.use("/",tenantRouter);
@@ -50,13 +54,12 @@ app.use("/",tenantDashboardRouter);
 app.use("/",chatRouter);
 app.use("/",messageRouter);
 app.use("/",openairouter);
-<<<<<<< HEAD
-=======
+app.use("/", subscriptionRouter);
 app.use("/",preferredTenantRouter);
 // app.use("/",searchChats);
 app.use("/",openairouter);
->>>>>>> 6705bdc6974fdfe2b2fa8f361266910f527848fa
 app.use("/",scheduleRouter);
+app.use("/",subscriptionUserrouter);
 
 
 const server = createServer(app);

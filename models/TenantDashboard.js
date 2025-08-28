@@ -3,35 +3,6 @@ const validator = require("validator");
 
 const TenantDashboardSchema = new mongoose.Schema(
   {
-    // tenantId: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "User",
-    //   required: true,
-    // },
-    // personalDetails: {
-    //   age: {
-    //     type: Number,
-    //     // required: [true, "Age is required"],
-    //     min: [18, "Age must be at least 18"],
-    //     max: [100, "Age must be below 100"],
-    //     validate: {
-    //       validator: Number.isInteger,
-    //       message: "Age must be a valid number",
-    //     },
-    //   },
-    //   employer: {
-    //     type: String,
-    //     // enum: ["employee", "student", "other"],
-    //     // required: [true, "Employer type is required"],
-    //   },
-    //   occupation: {
-    //     type: String,
-    //     minlength: [2, "Occupation must be at least 2 characters long"],
-    //     maxlength: [50, "Occupation cannot exceed 50 characters"],
-    //     trim: true,
-    //   },
-    // },
-
     propertyPreferences: {
       bhkType: {
         type: String,
@@ -40,7 +11,7 @@ const TenantDashboardSchema = new mongoose.Schema(
       },
       furnishingType: {
         type: String,
-        enum: ["furnished", "semi-furnished", "unfurnished"],
+        enum: ["Furnished", "Semi-Furnished", "Unfurnished"],
         // required: [true, "Furnishing type is required"],
       },
       amenities: {

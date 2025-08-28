@@ -386,7 +386,7 @@ exports.addPersonalDetails = async (req, res) => {
 
 exports.updatePersonalDetails = async (req, res) => {
   try {
-    const { id } = req.params; // userId
+     const tenantId = req.userId; // must be tenant
     const { personalDetails } = req.body; // personalDetails object
 
     if (!personalDetails) {
@@ -394,7 +394,7 @@ exports.updatePersonalDetails = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      id,
+      tenantId,
       { $set: { personalDetails } }, // update only personalDetails
       { new: true, runValidators: true }
     );
@@ -418,7 +418,8 @@ exports.updatePersonalDetails = async (req, res) => {
  */
 exports.updatePropertyPreferences = async (req, res) => {
   try {
-    const tenantId = req.params.id;
+   const tenantId = req.userId; // must be tenant
+   console.log("Incoming property preferences:", req.body);
     const { propertyPreferences } = req.body;
 
     const user = await User.findByIdAndUpdate(
@@ -443,17 +444,34 @@ exports.updatePropertyPreferences = async (req, res) => {
 // 3. Update lifestyle/preferences
 exports.updatePreferences = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { preferences } = req.body;
+    const tenantId = req.userId; // must be tenant
+    console.log("Incoming tenant preferences:", req.body);
+
+    // Get payload from request
+    const incoming = req.body.preferences;
+
+    // Convert string "Yes"/"No" to Boolean for smoker and pet
+    const preferences = {
+      gender: incoming.gender,
+      maritalStatus: incoming.maritalStatus,
+      smoker: incoming.smoker === "Yes",
+      eating: incoming.eating,
+      language: incoming.language,
+      pet: incoming.pet === "Yes",
+      coupleFriendly: incoming.coupleFriendly, // already Boolean
+    };
+
     const updatedTenant = await User.findByIdAndUpdate(
-      id,
+      tenantId,
       { $set: { preferences } },
       { new: true, runValidators: true }
     );
+
     if (!updatedTenant)
       return res.status(404).json({ message: "Tenant not found" });
+
     res.json({
-      message: " Property Preferences updated",
+      message: "Tenant Preferences updated",
       preferences: updatedTenant.preferences,
     });
   } catch (error) {
@@ -469,10 +487,10 @@ exports.updatePreferences = async (req, res) => {
 // 4. Update rental history
 exports.updateRentalHistory = async (req, res) => {
   try {
-    const { id } = req.params;
+    const tenantId = req.userId; // must be tenant
     const { rentalHistory } = req.body;
     const updatedTenant = await User.findByIdAndUpdate(
-      id,
+      tenantId,
       { $set: { rentalHistory } },
       { new: true, runValidators: true }
     );
@@ -561,13 +579,13 @@ exports.updateRentalHistory = async (req, res) => {
 // ✅ Get all documents of a tenant by ID
 exports.getTenantDocuments = async (req, res) => {
   try {
-    const { id } = req.params;
+    const tenantId = req.userId; // must be tenant
 
-    if (!id) {
+    if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    const tenant = await User.findById(id).select("documents name email");
+    const tenant = await User.findById(tenantId).select("documents name email");
     if (!tenant) {
       return res.status(404).json({ message: "Tenant not found" });
     }
@@ -575,9 +593,9 @@ exports.getTenantDocuments = async (req, res) => {
     return res.status(200).json({
       message: "Documents fetched successfully",
       tenant: {
-        id: tenant._id,
-        name: tenant.name,
-        email: tenant.email,
+        id: tenantId,
+        fullName: tenant.fullName,
+        emailId: tenant.emailId,
       },
       documents: tenant.documents || [],
     });
@@ -595,7 +613,7 @@ exports.uploadVideoIntro = [
   upload.single("video"), // multer middleware
   async (req, res) => {
     try {
-      const tenantId = req.params.id;
+      const tenantId = req.userId; // must be tenant
       const user = await User.findById(tenantId);
 
       if (!user) {

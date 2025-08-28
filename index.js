@@ -26,6 +26,8 @@ const subscriptionUserrouter=require("./routes/subscriptionUserRoutes")
 // const {openairouter}=require("./routes/openaiRoutes");
 const {preferredTenantRouter}=require("./routes/preferedTenantsRoutes");
 // const {openairouter}=require("./routes/openaiRoutes");
+const {preferredTenantRouter}=require("./routes/preferedTenantsRoutes");
+
 
 const app = express();
 
@@ -56,7 +58,6 @@ app.use("/",messageRouter);
 app.use("/",openairouter);
 app.use("/", subscriptionRouter);
 app.use("/",preferredTenantRouter);
-// app.use("/",searchChats);
 app.use("/",openairouter);
 app.use("/",scheduleRouter);
 app.use("/",subscriptionUserrouter);
